@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Книжная Полка</title>
+    <link rel="stylesheet" href="style/style.css">
+</head>
+<body>
+<header class="header">
+    <h1 class="header_title">Моя Книжная Полка</h1>
+    <p class="books_total">Всего книг: <span class="books_count">0</span></p>
+</header>
+
+<div class="container">
+
+    <aside class="sidebar">
+        <div class="book_form">
+            <form id="addBookForm">
+                <h2>Добавить книгу</h2>
+                <label for="title">Название:</label>
+                <input type="text" id="title" name="title" required>
+
+                <label for="author">Автор:</label>
+                <input type="text" id="author" name="author">
+
+                <label for="status">Статус:</label>
+                <select id="status" name="status">
+                    <option value="read">Прочитано</option>
+                    <option value="reading">Читаю</option>
+                    <option value="want_to_read">Хочу прочитать</option>
+                </select>
+
+                <button type="submit">Добавить на полку</button>
+            </form>
+        </div>
+
+        <div class="filter_books">
+            <h2>Фильтр поиска</h2>
+            <label for="filterStatus">Статус:</label><br>
+
+            <div class="filter-options">
+                <input type="checkbox" id="filterRead" name="filterStatus" value="read">
+                <label for="filterRead">Прочитано<span class="read-count">(0)</span></label><br>
+
+                <input type="checkbox" id="filterReading" name="filterStatus" value="reading">
+                <label for="filterReading">Читаю<span class="reading-count">(0)</span></label><br>
+
+                <input type="checkbox" id="filterWantToRead" name="filterStatus" value="want_to_read">
+                <label for="filterWantToRead">Хочу прочитать<span class="want-to-read-count">(0)</span></label><br>    
+            </div>
+        </div>
+    </aside>
+
+    <main class="main">
+        <h2>Ваша полка</h2>
+        <div class="books_list" id="booksList">
+            <p class="empty_message" id="emptyMessage">На полке пока нет книг. Добавьте свою первую книгу!</p>
+            <!-- Список книг будет отображаться здесь -->
+            <div class="book_card">
+                <div class="book_info">
+                    <h3 class="book_title">Название книги</h3>
+                    <p class="book_author">Автор: Автор книги</p>
+                </div>
+
+                <div class="book-status-control">
+                    <label class="statusLabel">Статус:</label>
+                    <select class="statusSelect">
+                        <option value="read">Прочитано</option>
+                        <option value="reading">Читаю</option>
+                        <option value="want_to_read">Хочу прочитать</option>
+                    </select>
+                </div>
+
+                <div class="book-rating-control">
+                    <div class="rating-stars">
+                        <span class="star" data-value="1">&#9733;</span>
+                        <span class="star" data-value="2">&#9733;</span>
+                        <span class="star" data-value="3">&#9733;</span>
+                        <span class="star" data-value="4">&#9733;</span>
+                        <span class="star" data-value="5">&#9733;</span>
+                    </div>
+                    
+                    <button type="button" class="clear-rating">Очистить рейтинг</button>
+                </div>
+
+                <div class="book_actions">
+                    <button type="button" class="btn-delete">Удалить</button>
+                </div>
+            </div>
+
+        </div>
+
+        
+    </main>
+</div>
+<script src="js/script.js"></script>
+</body>
+</html>
