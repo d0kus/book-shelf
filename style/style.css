@@ -1,5 +1,215 @@
+/* объявление переменных */
+:root{
+  --primary-color: #7a431d;
+  --primary-hover: #5c3214;
+
+  --bg-page: #f7f4ee;
+  --bg-card: #ffffff;
+  --border-color: #e6dfd5;
+
+  --text-main: #2c2523;
+  --text-muted: #7d726b;
+
+  --status-read: #3d704d;
+  --status-reading: #c07018;
+  --status-want: #63707e;
+
+  --star-active: #d97706;
+  --star-empty: #e0d7cb;
+  --danger: #a83232;
+}
+
 *, *::after, *::before {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+}
+
+/* базовые стили */
+body{
+  background-color: var(--bg-page);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: var(--text-main);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+/* навигационная панель */
+.header{
+  margin-bottom: 32px;
+  background-color: var(--bg-card);
+  border-bottom: 1px solid var(--border-color);
+  width: 100%;
+}
+
+/* контейнер навигационной панели */
+.header-container{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1350px;
+  margin: 0 auto;
+  padding: 16px 20px;
+}
+
+.header_title{
+  font-size: 24px;
+}
+
+.books_total{
+  background: var(--bg-page);
+  border-radius: 20px;
+  padding: 6px 14px;
+  border: 1px solid var(--border-color);
+  font-size: 14px; 
+  color: var(--text-muted);
+}
+
+.books_count{
+ font-weight: 700;
+ color: var(--primary-color);
+}
+
+/* основной контейнер */
+.container{
+  max-width: 1350px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  gap: 32px;
+  align-items: flex-start;
+}
+
+/* боковая панель */
+.sidebar{
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 320px;
+  flex-shrink: 0;
+}
+
+/* отдельные колонки */
+.book_form, .filter_books{
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.book_form h2, .filter_books h2{
+  font-size: 20px;
+  margin-bottom: 16px;
+}
+
+/* форма добавления книги */
+#addBookForm label{
+  display: block;
+  margin-top: 12px;
+  margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-main);
+}
+
+#addBookForm input[type="text"], #addBookForm select{
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+}
+
+#addBookForm input:focus, #addBookForm select:focus{
+  border-color: var(--primary-color);
+}
+
+#addBookForm button[type="submit"]{
+  width: 100%;
+  margin-top: 16px;
+  padding: 12px;
+  background-color: var(--primary-color);
+  color: #ffffff;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+#addBookForm button[type="submit"]:hover{
+  background-color: var(--primary-hover);
+}
+
+/* фильтры книг */
+.filter-options{
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filter-item{
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.filter-item:hover{
+  background-color: var(--bg-page);
+}
+
+/* кастомный чекбокс */
+.filter-item input[type="checkbox"]{
+  appearance: none;
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border-color);
+  border-radius: 50%;
+  cursor: pointer;
+  margin-right: 12px;
+  display: grid;
+  place-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.filter-item input[type="checkbox"]:checked {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.filter-item input[type="checkbox"]::before {
+  content: "";
+  width: 10px;
+  height: 6px;
+  border-left: 2px solid #ffffff;
+  border-bottom: 2px solid #ffffff;
+  transform: rotate(-45deg) scale(0);
+  transition: transform 0.15s ease-in-out;
+  margin-top: -2px;
+}
+
+.filter-item input[type="checkbox"]:checked::before {
+  transform: rotate(-45deg) scale(1);
+}
+
+.filter-text{
+  flex-grow: 1;
+  font-size: 16px;
+  color: var(--text-main);
+}
+
+.count-badge{
+ font-size: 14px;
+ font-weight: 600;
+ color: var(--text-muted);
+ background-color: var(--bg-page);
+ padding: 2px 8px;
+ border-radius: 12px;
 }

@@ -8,8 +8,10 @@
 </head>
 <body>
 <header class="header">
-    <h1 class="header_title">Моя Книжная Полка</h1>
-    <p class="books_total">Всего книг: <span class="books_count">0</span></p>
+    <div class="header-container">
+        <h1 class="header_title">Моя Книжная Полка</h1>
+        <p class="books_total">Всего книг: <span class="books_count">0</span></p>
+    </div>
 </header>
 
 <div class="container">
@@ -37,17 +39,22 @@
 
         <div class="filter_books">
             <h2>Фильтр поиска</h2>
-            <label for="filterStatus">Статус:</label><br>
-
             <div class="filter-options">
+              <label class="filter-item">
                 <input type="checkbox" id="filterRead" name="filterStatus" value="read">
-                <label for="filterRead">Прочитано<span class="read-count">(0)</span></label><br>
-
+                <span class="filter-text">Прочитано</span>
+                <span class="read-count count-badge">0</span>
+              </label>
+              <label class="filter-item">
                 <input type="checkbox" id="filterReading" name="filterStatus" value="reading">
-                <label for="filterReading">Читаю<span class="reading-count">(0)</span></label><br>
-
+                <span class="filter-text">Читаю</span>
+                <span class="reading-count count-badge">0</span>
+              </label>
+              <label class="filter-item">
                 <input type="checkbox" id="filterWantToRead" name="filterStatus" value="want_to_read">
-                <label for="filterWantToRead">Хочу прочитать<span class="want-to-read-count">(0)</span></label><br>    
+                <span class="filter-text">Хочу прочитать</span>
+                <span class="want-to-read-count count-badge">0</span>
+              </label>
             </div>
         </div>
     </aside>
