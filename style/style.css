@@ -128,6 +128,18 @@ body{
   border-color: var(--primary-color);
 }
 
+#addBookForm input.input-error {
+  border-color: var(--danger);
+  background-color: #fff8f8;
+}
+
+.error-message {
+  color: var(--danger);
+  font-size: 12px;
+  margin-top: 4px;
+  display: none;
+}
+
 #addBookForm button[type="submit"]{
   width: 100%;
   margin-top: 16px;
