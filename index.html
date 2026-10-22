@@ -30,7 +30,7 @@
                 <select id="status" name="status">
                     <option value="read">Прочитано</option>
                     <option value="reading">Читаю</option>
-                    <option value="want_to_read">Хочу прочитать</option>
+                    <option value="want">Хочу прочитать</option>
                 </select>
 
                 <button type="submit">Добавить на полку</button>
@@ -51,7 +51,7 @@
                 <span class="reading-count count-badge">0</span>
               </label>
               <label class="filter-item">
-                <input type="checkbox" id="filterWantToRead" name="filterStatus" value="want_to_read">
+                <input type="checkbox" id="filterWantToRead" name="filterStatus" value="want">
                 <span class="filter-text">Хочу прочитать</span>
                 <span class="want-to-read-count count-badge">0</span>
               </label>
@@ -61,10 +61,13 @@
 
     <main class="main">
         <h2>Ваша полка</h2>
+         <div class="empty_message" id="emptyMessage">
+            <p class="empty_text">На полке пока нет книг</p>
+            <span class="empty_subtext">Добавьте свою первую книгу с помощью формы слева</span>
+         </div>
         <div class="books_list" id="booksList">
-            <p class="empty_message" id="emptyMessage">На полке пока нет книг. Добавьте свою первую книгу!</p>
             <!-- Список книг будет отображаться здесь -->
-            <div class="book_card">
+            <div class="book_card" data-status="read">
                 <div class="book_info">
                     <h3 class="book_title">Название книги</h3>
                     <p class="book_author">Автор: Автор книги</p>
@@ -75,7 +78,7 @@
                     <select class="statusSelect">
                         <option value="read">Прочитано</option>
                         <option value="reading">Читаю</option>
-                        <option value="want_to_read">Хочу прочитать</option>
+                        <option value="want">Хочу прочитать</option>
                     </select>
                 </div>
 
@@ -88,7 +91,7 @@
                         <span class="star" data-value="5">&#9733;</span>
                     </div>
                     
-                    <button type="button" class="clear-rating">Очистить рейтинг</button>
+                    <button type="button" class="clear-rating">Сбросить</button>
                 </div>
 
                 <div class="book_actions">
