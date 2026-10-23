@@ -172,6 +172,7 @@ booksList.addEventListener('change', e => {
     }
 });
 
+/* функция для обновления счетчиков */
 function updateCounters(){
     bookCount.textContent = books.length;
     readCount.textContent = books.filter(book => book.status === 'read').length;
@@ -179,6 +180,7 @@ function updateCounters(){
     wantCount.textContent = books.filter(book => book.status === 'want').length;
 }
 
+/* обработчик изменения фильтров */
 filterOption.addEventListener('change', () => {
     renderBooks();
 });
