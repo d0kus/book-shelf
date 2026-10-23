@@ -7,6 +7,11 @@ const booksList = document.getElementById('booksList');
 const emptyMessage = document.getElementById('emptyMessage');
 const bookCount = document.querySelector('.books_count');
 const titleError = document.getElementById('titleError');
+const readCount = document.querySelector('.read-count');
+const readingCount = document.querySelector('.reading-count');
+const wantCount = document.querySelector('.want-to-read-count');
+const filterOption = document.querySelector('.filter-options');
+
 
 /* массив для хранения книг */
 let books = [];
@@ -47,13 +52,22 @@ titleInput.addEventListener('input', () => {
 /* функция для отображения списка книг */
 function renderBooks(){
     booksList.innerHTML = '';
+
+    const activeCheckboxes = Array.from(document.querySelectorAll('.filter-options input[type="checkbox"]:checked'));
+    const selectedStatuses = activeCheckboxes.map(checkbox => checkbox.value);
+
+    let booksToRender = books;
+    if (selectedStatuses.length > 0) {
+        booksToRender = books.filter(book => selectedStatuses.includes(book.status));
+    }
+
     if(books.length === 0){
         emptyMessage.style.display = 'block';
     } else {
         emptyMessage.style.display = 'none';
     }
 
-    books.forEach(book => {
+    booksToRender.forEach(book => {
         const bookCard = document.createElement('div');
         bookCard.classList.add('book_card');
         bookCard.dataset.id = book.id;
@@ -92,7 +106,7 @@ function renderBooks(){
     booksList.insertAdjacentElement('beforeend', bookCard);
     });
 
-    bookCount.textContent = books.length;
+    updateCounters();
 }
 
 /* обработчик кнопок */
@@ -156,6 +170,17 @@ booksList.addEventListener('change', e => {
             renderBooks();
         }
     }
+});
+
+function updateCounters(){
+    bookCount.textContent = books.length;
+    readCount.textContent = books.filter(book => book.status === 'read').length;
+    readingCount.textContent = books.filter(book => book.status === 'reading').length;
+    wantCount.textContent = books.filter(book => book.status === 'want').length;
+}
+
+filterOption.addEventListener('change', () => {
+    renderBooks();
 });
 
 
