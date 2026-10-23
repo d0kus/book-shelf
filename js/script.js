@@ -1,3 +1,4 @@
+/* скрипт для работы с книгами */
 const bookForm = document.getElementById('addBookForm');
 const titleInput = document.getElementById('title');
 const authorInput = document.getElementById('author');
@@ -7,8 +8,10 @@ const emptyMessage = document.getElementById('emptyMessage');
 const bookCount = document.querySelector('.books_count');
 const titleError = document.getElementById('titleError');
 
+/* массив для хранения книг */
 let books = [];
 
+/* обработчик события отправки формы */
 bookForm.addEventListener('submit', e =>{
     e.preventDefault();
     let title = titleInput.value.trim();
@@ -34,11 +37,14 @@ bookForm.addEventListener('submit', e =>{
     renderBooks();
 });
 
+/* обработчик события ввода в поле названия книги */
 titleInput.addEventListener('input', () => {
     titleInput.classList.remove('input-error');
     titleError.style.display = 'none';
 });
 
+
+/* функция для отображения списка книг */
 function renderBooks(){
     booksList.innerHTML = '';
     if(books.length === 0){
@@ -67,7 +73,8 @@ function renderBooks(){
                     </select>
                 </div>
 
-                <div class="book-rating-control">
+                <div class="book-rating-control ${book.status !== 'read' ? 'disabled' : ''}"
+                title="${book.status !== 'read' ? 'Оценка доступна только после прочтения книги' : ''}">
                     <div class="rating-stars">
                         <span class="star" data-value="1">&#9733;</span>
                         <span class="star" data-value="2">&#9733;</span>

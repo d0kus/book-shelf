@@ -228,10 +228,13 @@ body{
  border-radius: 12px;
 }
 
+/* основная часть */
 .main{
   flex-grow: 1;
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  width: 100%;
 }
 
 .main h2{
@@ -239,6 +242,7 @@ body{
   margin-bottom: 20px;
 }
 
+/* список книг */
 .books_list{
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -266,6 +270,7 @@ body{
   color: var(--text-muted);
 }
 
+/* карточка книги */
 .book_card{
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
@@ -325,8 +330,13 @@ body{
   justify-content: space-between;
 }
 
-.book-rating-control.hidden{
-  display: none;
+.book-rating-control.disabled {
+  opacity: 0.35;      
+  user-select: none;       
+}
+
+.book-rating-control.disabled * {
+  pointer-events: none; 
 }
 
 .star{
@@ -368,4 +378,32 @@ body{
 .book_actions .btn-delete:hover{
   background-color: var(--danger);
   color: #ffffff;
+}
+
+/* Медиа-запросы */
+@media (max-width: 768px){
+  .container{
+    flex-direction: column;
+    gap: 24px;
+    padding: 0 20px;
+  }
+
+  .sidebar{
+    width: 100%;
+  }
+
+  .header_title{
+    font-size: 20px;
+  }
+
+  .books_list{
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  }
+  
+  .filter-options{
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
 }
