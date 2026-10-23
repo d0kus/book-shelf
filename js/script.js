@@ -76,11 +76,11 @@ function renderBooks(){
                 <div class="book-rating-control ${book.status !== 'read' ? 'disabled' : ''}"
                 title="${book.status !== 'read' ? 'Оценка доступна только после прочтения книги' : ''}">
                     <div class="rating-stars">
-                        <span class="star" data-value="1">&#9733;</span>
-                        <span class="star" data-value="2">&#9733;</span>
-                        <span class="star" data-value="3">&#9733;</span>
-                        <span class="star" data-value="4">&#9733;</span>
-                        <span class="star" data-value="5">&#9733;</span>
+                        <span class="star ${book.rating >= 1 ? 'active' : ''}" data-value="1">&#9733;</span>
+                        <span class="star ${book.rating >= 2 ? 'active' : ''}" data-value="2">&#9733;</span>
+                        <span class="star ${book.rating >= 3 ? 'active' : ''}" data-value="3">&#9733;</span>
+                        <span class="star ${book.rating >= 4 ? 'active' : ''}" data-value="4">&#9733;</span>
+                        <span class="star ${book.rating >= 5 ? 'active' : ''}" data-value="5">&#9733;</span>
                     </div>
                     
                     <button type="button" class="clear-rating">Сбросить</button>
@@ -95,8 +95,9 @@ function renderBooks(){
     bookCount.textContent = books.length;
 }
 
-/* обработчик кнопки удаления */
+/* обработчик кнопок */
 booksList.addEventListener('click', e => {
+    /* обработчик кнопки удаления книги */
     if(e.target.classList.contains('btn-delete')){
         const card = e.target.closest('.book_card');
         const bookId = Number(card.dataset.id);
@@ -110,6 +111,50 @@ booksList.addEventListener('click', e => {
 
         books = books.filter(book => book.id !== bookId);
         renderBooks();
+    }
+
+    /* обработчик изменения рейтинга */
+    if(e.target.classList.contains('star')) {
+        const card = e.target.closest('.book_card');
+        const bookId = Number(card.dataset.id);
+        const starValue = Number(e.target.dataset.value);
+
+        const book = books.find(book => book.id === bookId);
+        if (book && book.status === 'read') {
+            book.rating = starValue;
+            renderBooks();
+        }
+    }
+
+    /* обработчик кнопки сброса рейтинга */
+    if (e.target.classList.contains('clear-rating')) {
+        const card = e.target.closest('.book_card');
+        const bookId = Number(card.dataset.id);
+
+        const book = books.find(book => book.id === bookId);
+        if (book && book.status === 'read') {
+            book.rating = null;
+            renderBooks();
+        }
+    }
+});
+
+/* обработчик изменения статуса книги */
+booksList.addEventListener('change', e => {
+    if (e.target.classList.contains('statusSelect')) {
+        const card = e.target.closest('.book_card');
+        const bookId = Number(card.dataset.id);
+        const newStatus = e.target.value;
+
+        const book = books.find(book => book.id === bookId);
+        if (book) {
+            book.status = newStatus;
+
+            if (newStatus !== 'read') {
+                book.rating = null;
+            }
+            renderBooks();
+        }
     }
 });
 

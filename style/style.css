@@ -339,11 +339,16 @@ body{
   pointer-events: none; 
 }
 
+.book-rating-control:not(.disabled) .star:hover {
+  transform: scale(1.25);
+}
+
 .star{
   font-size: 30px;
   cursor: pointer;
   color: var(--star-empty);
-  transition: color 0.2s;
+  transition: transform 0.15s ease, color 0.2s;
+  display: inline-block;
 }
 
 .star.active{
