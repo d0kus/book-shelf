@@ -95,4 +95,15 @@ function renderBooks(){
     bookCount.textContent = books.length;
 }
 
+/* обработчик кнопки удаления */
+booksList.addEventListener('click', e => {
+    if(e.target.classList.contains('btn-delete')){
+        const card = e.target.closest('.book_card');
+        const bookId = Number(card.dataset.id);
+        books = books.filter(book => book.id !== bookId);
+        renderBooks();
+    }
+});
+
+
 renderBooks();
