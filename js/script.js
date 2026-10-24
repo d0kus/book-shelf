@@ -9,12 +9,19 @@ const bookCount = document.querySelector('.books_count');
 const titleError = document.getElementById('titleError');
 const readCount = document.querySelector('.read-count');
 const readingCount = document.querySelector('.reading-count');
-const wantCount = document.querySelector('.want-to-read-count');
+const wantCount = document.querySelector('.want-count');
 const filterOption = document.querySelector('.filter-options');
 
 
-/* массив для хранения книг */
-let books = [];
+/* массив для хранения книг в localStorage */
+let books = JSON.parse(localStorage.getItem('books_shelf')) || [];
+
+
+/* функция для сохранения книг в localStorage */
+function saveBooks(){
+    localStorage.setItem('books_shelf', JSON.stringify(books));
+}
+
 
 /* обработчик события отправки формы */
 bookForm.addEventListener('submit', e =>{
@@ -105,7 +112,7 @@ function renderBooks(){
                 </div> `;
     booksList.insertAdjacentElement('beforeend', bookCard);
     });
-
+    saveBooks();
     updateCounters();
 }
 
