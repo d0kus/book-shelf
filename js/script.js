@@ -89,8 +89,8 @@ function renderBooks(){
         bookCard.dataset.status = book.status;
         bookCard.innerHTML = `
                 <div class="book_info">
-                    <h3 class="book_title">${book.title}</h3>
-                    <p class="book_author">Автор: ${book.author}</p>
+                    <h3 class="book_title">${escapeHtml(book.title)}</h3>
+                    <p class="book_author">Автор: ${escapeHtml(book.author)}</p>
                 </div>
 
                 <div class="book-status-control">
@@ -199,6 +199,13 @@ function updateCounters(){
 filterOption.addEventListener('change', () => {
     renderBooks();
 });
+
+/* функция для экранирования HTML */
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
 
 
 renderBooks();
