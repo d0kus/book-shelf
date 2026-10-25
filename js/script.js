@@ -11,6 +11,7 @@ const readCount = document.querySelector('.read-count');
 const readingCount = document.querySelector('.reading-count');
 const wantCount = document.querySelector('.want-count');
 const filterOption = document.querySelector('.filter-options');
+const noResultsMessage = document.getElementById('noResultsMessage');
 
 
 /* массив для хранения книг в localStorage */
@@ -70,8 +71,15 @@ function renderBooks(){
 
     if(books.length === 0){
         emptyMessage.style.display = 'block';
-    } else {
+        noResultsMessage.style.display = 'none';
+    }
+    else if (booksToRender.length === 0) {
         emptyMessage.style.display = 'none';
+        noResultsMessage.style.display = 'block';
+    }
+    else {
+        emptyMessage.style.display = 'none';
+        noResultsMessage.style.display = 'none';
     }
 
     booksToRender.forEach(book => {
