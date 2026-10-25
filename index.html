@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Книжная Полка</title>
+    <link rel="stylesheet" href="style/style.css">
+</head>
+<body>
+<header class="header">
+    <div class="header-container">
+        <h1 class="header_title">Моя Книжная Полка</h1>
+        <p class="books_total">Всего книг: <span class="books_count">0</span></p>
+    </div>
+</header>
+
+<div class="container">
+    <aside class="sidebar">
+        <div class="book_form">
+            <form id="addBookForm" novalidate>
+                <h2>Добавить книгу</h2>
+                <label for="title">Название:</label>
+                <input type="text" id="title" name="title" required>
+                <span class="error-message" id="titleError"></span>
+
+                <label for="author">Автор:</label>
+                <input type="text" id="author" name="author">
+
+                <label for="status">Статус:</label>
+                <select id="status" name="status">
+                    <option value="want">Хочу прочитать</option>
+                    <option value="reading">Читаю</option>
+                    <option value="read">Прочитано</option>
+                </select>
+
+                <button type="submit">Добавить на полку</button>
+            </form>
+        </div>
+
+        <div class="filter_books">
+            <h2>Фильтр поиска</h2>
+            <div class="filter-options">
+              <label class="filter-item">
+                <input type="checkbox" id="filterRead" name="filterStatus" value="read">
+                <span class="filter-text">Прочитано</span>
+                <span class="read-count count-badge">0</span>
+              </label>
+              <label class="filter-item">
+                <input type="checkbox" id="filterReading" name="filterStatus" value="reading">
+                <span class="filter-text">Читаю</span>
+                <span class="reading-count count-badge">0</span>
+              </label>
+              <label class="filter-item">
+                <input type="checkbox" id="filterWantToRead" name="filterStatus" value="want">
+                <span class="filter-text">Хочу прочитать</span>
+                <span class="want-count count-badge">0</span>
+              </label>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main">
+        <h2>Ваша полка</h2>
+         <div class="empty_message" id="emptyMessage">
+            <p class="empty_text">На полке пока нет книг</p>
+            <span class="empty_subtext">Добавьте свою первую книгу с помощью формы</span>
+         </div>
+
+         <div class="empty_message" id="noResultsMessage" style="display: none;">
+            <p class="empty_text">По выбранным фильтрам ничего не найдено</p>
+            <span class="empty_subtext">Попробуйте изменить фильтры поиска</span>
+        </div>
+
+        <div class="books_list" id="booksList">
+            <!-- cписок книг будет отображаться здесь -->
+            
+
+        </div>
+
+        
+    </main>
+</div>
+<script src="js/script.js"></script>
+</body>
+</html>
