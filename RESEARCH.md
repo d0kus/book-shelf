@@ -84,9 +84,9 @@ books.find(book => book.id === bookId)    ищет одну книгу по ус
 
 
 ### 12. разница событий
-- submit — отправка формы.
-- input — срабатывает в реальном времени при каждом нажатии клавиши
-- change — срабатывает при выборе в \<select> или переключении чекбокса.
+- **submit** — отправка формы.
+- **input** — срабатывает в реальном времени при каждом нажатии клавиши
+- **change** — срабатывает при выборе в \<select> или переключении чекбокса.
 
 ## Что понял:
 1. `localStorage` сохраняет данные на диске браузера, но понимает только строки. Поэтому объекты и массивы всегда нужно пропускать через `JSON.stringify()`, а при чтении через `JSON.parse()`.
@@ -137,7 +137,7 @@ function loadScript(src, callback) {
 ```
 функция callback  заработает только тогда когда загрузится скрипт 
 
-callback - функция, переданная аргументом, чтобы её вызвала другая функция.
+**callback** - функция, переданная аргументом, чтобы её вызвала другая функция.
 
 ### Promise
 ```
@@ -167,9 +167,9 @@ loadScriptPromise('/script1.js')
     console.error("Произошла ошибка:", err);
   });
 ```
-then срабатывает при resolve 
+**then** срабатывает при **resolve**
 
-catch срабатывает при reject
+**catch** срабатывает при **reject**
 
 ### await / async
 
@@ -217,9 +217,9 @@ const server = http.createServer((req, res) => {        создает новы�
 ```
 Сервер получает запрос, вызывается событие request, представляющее два обьекта:
 
-Первый — это запрос (req, объект http.IncomingMessage)
+Первый — это **запрос** (req, объект http.IncomingMessage)
 
-Второй — ответ (res, объект http.ServerResponse)
+Второй — **ответ** (res, объект http.ServerResponse)
 
 ### server.listen()
 
@@ -254,9 +254,13 @@ req.url = "/users?id=42&role=admin"
 ```
 const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
 
+parsedUrl.href             вернет полную ссылку "http://localhost:3000/api/v1/users"
 parsedUrl.pathname        "/users"
 parsedUrl.search          "?id=42&role=admin"
 parsedUrl.searchParams     Специальный объект URLSearchParams
+
+parsedUrl.password        ":...."
+parsedUrl.hash            "#..."
 ```
 base должен быть корректным адресом типа http://....
 
@@ -264,14 +268,14 @@ base должен быть корректным адресом типа http://.
 ```
 const url = new URL('https://site.com/catalog?category=phones&page=2&tag=apple&tag=sale&filter=');
 
-params.get('category');    "phones"
-params.get('page');        "2" (ВНИМАНИЕ: это строка, не число!)
-params.get('unknown');      null (ключа нет)
-params.get('filter');      "" (пустая строка, ключ есть, но без значения)
+searchParams.get('category');    "phones"
+searchParams.get('page');        "2" (ВНИМАНИЕ: это строка, не число!)
+searchParams.get('unknown');      null (ключа нет)
+searchParams.get('filter');      "" (пустая строка, ключ есть, но без значения)
 
-params.getAll('tag');       ["apple", "sale"]
+searchParams.getAll('tag');       ["apple", "sale"]
 
-params.has('category');     true
+searchParams.has('category');     true
 ```
 
 `message.httpVersion`
