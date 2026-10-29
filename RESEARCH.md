@@ -333,3 +333,24 @@ res.statusCode = 404;
 res.end('Страница не найдена');
 ```
 для показа статус кода
+
+###  Некоторые виды headers
+
+**Content-Type**: показывает формат данных, которые лежат в теле.
+
+**Access-Control-Allow-Origin: \***: Сервер говорит браузеру: «Разрешаю сайтам с других доменов/портов читать мои ответы»
+
+**Access-Control-Allow-Methods: GET, POST, PATCH, DELETE, OPTIONS**: Список разрешенных HTTP-методов для внешних сайтов.
+
+**Access-Control-Allow-Headers: Content-Type, Authorization**: Разрешение клиенту отправлять кастомные заголовки.
+
+### Важные Content-Type виды
+
+**1. application/json**: данные в формате JSON
+
+**2. text/html; charset=utf-8**: веб-страница с разметкой.
+
+**3. text/plain**: обычный голый текст без всякого оформления.
+
+**4. multipart/form-data**: формат для отправки бинарных файлов (картинки, PDF, аватарки).
+
