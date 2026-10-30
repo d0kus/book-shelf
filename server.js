@@ -13,6 +13,7 @@ let books = [
 ]
 const validStatuses = ["want", "reading", "read"];
 
+/* Функция для получения тела запроса в формате JSON */
 function getRequestBody(req) {
     return new Promise((resolve, reject) => {
         let body = '';
@@ -50,6 +51,8 @@ const server = http.createServer(async (req, res) => {
     }
 
     const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
+
+    /* Обрабатываем GET-запросы к /books с фильтрацией по параметрам */
     if (parsedUrl.pathname === '/books' && req.method === 'GET') {
         const queryParams = parsedUrl.searchParams;
         let filteredBooks = books;
@@ -79,12 +82,14 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify(filteredBooks));
     }
     
+    /* Обрабатываем GET-запрос к корневому пути */
     else if (parsedUrl.pathname === '/' && req.method === 'GET') {
         res.statusCode = 200;
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');
         res.end('Добро пожаловать на сервер книг! Используйте /books для получения списка книг.');
     }
 
+    /* Обрабатываем POST-запросы к /books для добавления новой книги */
     else if (parsedUrl.pathname === '/books' && req.method === 'POST') {
         try {
             const newBook = await getRequestBody(req);
@@ -103,7 +108,11 @@ const server = http.createServer(async (req, res) => {
             }
             newBook.id = Date.now();
             newBook.title = newBook.title.trim();
-            newBook.author = newBook.author ? newBook.author.trim() : 'Неизвестный автор';
+            if (newBook.author) {
+                newBook.author = newBook.author.trim();
+            }
+            newBook.author = newBook.author || "Неизвестный автор";
+            
             if (newBook.status !== 'read') {
                 newBook.rating = null;
             }
@@ -122,6 +131,10 @@ const server = http.createServer(async (req, res) => {
         }
     }
 
+
+
+
+    /* Обрабатываем остальные запросы */
     else {
         res.statusCode = 404;
         res.setHeader('Content-Type', 'application/json');
