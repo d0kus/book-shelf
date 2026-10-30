@@ -281,6 +281,11 @@ searchParams.has('category');     true
 `message.httpVersion`
 версия http протокола
 
+
+`req.on('data', ...)` - при получении порции данных — выполни эту функцию
+
+`req.on('end', ...)` - при окончании передачи данных — выполни эту функцию
+
 ### Методы ServerResponse
 
 `response.setHeader(name, value)`
