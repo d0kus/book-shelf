@@ -359,3 +359,15 @@ res.end('Страница не найдена');
 
 **4. multipart/form-data**: формат для отправки бинарных файлов (картинки, PDF, аватарки).
 
+
+### Object.assign
+```
+const book = { id: 1, title: '1984', status: 'want', rating: null };
+const updates = { status: 'read', rating: 5 };
+
+Object.assign(book, updates);
+
+status и rating обновится а все остальное останется не тронутым
+```
+
+

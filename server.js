@@ -131,6 +131,60 @@ const server = http.createServer(async (req, res) => {
         }
     }
 
+    /* Обрабатываем PATCH-запросы к /books/:id для обновления книги по ID */
+    else if (parsedUrl.pathname.startsWith('/books/') && req.method === 'PATCH') {
+        const id = parseInt(parsedUrl.pathname.split('/')[2]);
+        if (isNaN(id)) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Некорректный ID книги' }));
+            return;
+        }
+        const book = books.find(b => b.id === id);
+        if (!book) {
+            res.statusCode = 404;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Книга не найдена' }));
+            return;
+        }
+        try {
+            const updates = await getRequestBody(req);
+            delete updates.id;
+            if (updates.title !== undefined && (!updates.title || !updates.title.trim())) {
+                res.statusCode = 400;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Название книги не может быть пустым' }));
+                return;
+            }
+            if (updates.status && !validStatuses.includes(updates.status)) {
+                res.statusCode = 400;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Некорректный статус книги' }));
+                return;
+            }
+            if (updates.rating !== undefined && updates.rating !== null && (!Number.isInteger(updates.rating) || updates.rating < 1 || updates.rating > 5)) {
+                res.statusCode = 400;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Оценка должна быть числом от 1 до 5' }));
+                return;
+            }
+            Object.assign(book, updates);
+            if (book.status !== 'read') {
+                book.rating = null;
+            }
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(book));
+        }
+        catch (err) {
+        res.statusCode = 400;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: 'Некорректный JSON в теле запроса' }));
+        }
+}
+
+
+
     /* Обрабатываем DELETE-запросы к /books/:id для удаления книги по ID */
     else if (parsedUrl.pathname.startsWith('/books/') && req.method === 'DELETE') {
         const id = parseInt(parsedUrl.pathname.split('/')[2]);
