@@ -131,9 +131,28 @@ const server = http.createServer(async (req, res) => {
         }
     }
 
-
-
-
+    /* Обрабатываем DELETE-запросы к /books/:id для удаления книги по ID */
+    else if (parsedUrl.pathname.startsWith('/books/') && req.method === 'DELETE') {
+        const id = parseInt(parsedUrl.pathname.split('/')[2]);
+        if (isNaN(id)) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Некорректный ID книги' }));
+            return;
+        }
+        const book = books.find(b => b.id === id);
+        if (!book) {
+            res.statusCode = 404;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Книга не найдена' }));
+            return;
+        }
+        books = books.filter(b => b.id !== id);
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ message: 'Книга успешно удалена' }));
+    }
+        
     /* Обрабатываем остальные запросы */
     else {
         res.statusCode = 404;
