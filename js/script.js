@@ -12,20 +12,30 @@ const readingCount = document.querySelector('.reading-count');
 const wantCount = document.querySelector('.want-count');
 const filterOption = document.querySelector('.filter-options');
 const noResultsMessage = document.getElementById('noResultsMessage');
+const API_URL = 'http://localhost:3000/books';
 
 
 /* массив для хранения книг в localStorage */
-let books = JSON.parse(localStorage.getItem('books_shelf')) || [];
+let books = [];
 
+async function fetchBooks() { 
+    try {
+        const response = await fetch(API_URL);
 
-/* функция для сохранения книг в localStorage */
-function saveBooks(){
-    localStorage.setItem('books_shelf', JSON.stringify(books));
+        if (!response.ok) {
+            throw new Error(`Ошибка при получении данных: ${response.status}`);
+        }
+
+        books = await response.json();
+        renderBooks();
+    } catch (error) {
+        console.error('Не удалось загрузить книги:', error.message);
+    }
 }
 
 
 /* обработчик события отправки формы */
-bookForm.addEventListener('submit', e =>{
+bookForm.addEventListener('submit',async (e) => {
     e.preventDefault();
     let title = titleInput.value.trim();
     let author = authorInput.value.trim();
@@ -38,16 +48,29 @@ bookForm.addEventListener('submit', e =>{
         titleInput.focus();
         return;
     }
-    const newBook = {
-        id: Date.now(),
-        title: title,
-        author: author || "Неизвестный автор",
-        status: status,
-        rating: null
-    };
-    books.push(newBook);
-    bookForm.reset();
-    renderBooks();
+    
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                title: title,
+                author: author,
+                status: status
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Ошибка сервера: ${response.status}`);
+        }
+
+        const createdBook = await response.json();
+        books.push(createdBook);
+        bookForm.reset();
+        renderBooks();
+    } catch (error) {
+        console.error('Не удалось добавить книгу:', error.message);
+    }
 });
 
 /* обработчик события ввода в поле названия книги */
@@ -120,12 +143,11 @@ function renderBooks(){
                 </div> `;
     booksList.insertAdjacentElement('beforeend', bookCard);
     });
-    saveBooks();
     updateCounters();
 }
 
 /* обработчик кнопок */
-booksList.addEventListener('click', e => {
+booksList.addEventListener('click', async (e) => {
     /* обработчик кнопки удаления книги */
     if(e.target.classList.contains('btn-delete')){
         const card = e.target.closest('.book_card');
@@ -138,8 +160,18 @@ booksList.addEventListener('click', e => {
 
         if(!isConfirmed) return;
 
-        books = books.filter(book => book.id !== bookId);
-        renderBooks();
+        try {
+            const response = await fetch(`${API_URL}/${bookId}`, {
+                method: 'DELETE'
+            });
+            if (!response.ok) {
+                throw new Error(`Ошибка сервера: ${response.status}`);
+            }
+            books = books.filter(book => book.id !== bookId);
+            renderBooks();
+        } catch (error) {
+            console.error('Ошибка при удалении книги:', error);
+        }
     }
 
     /* обработчик изменения рейтинга */
@@ -149,9 +181,20 @@ booksList.addEventListener('click', e => {
         const starValue = Number(e.target.dataset.value);
 
         const book = books.find(book => book.id === bookId);
-        if (book && book.status === 'read') {
-            book.rating = starValue;
+        try {
+            const response = await fetch(`${API_URL}/${bookId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rating: starValue })
+            });
+            if (!response.ok) {
+                throw new Error(`Ошибка сервера: ${response.status}`);
+            }
+            const updatedBook = await response.json();
+            Object.assign(book, updatedBook);
             renderBooks();
+        } catch (error) {
+            console.error('Ошибка при изменении рейтинга:', error);
         }
     }
 
@@ -161,28 +204,53 @@ booksList.addEventListener('click', e => {
         const bookId = Number(card.dataset.id);
 
         const book = books.find(book => book.id === bookId);
-        if (book && book.status === 'read') {
-            book.rating = null;
+        try {
+            const response = await fetch(`${API_URL}/${bookId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rating: null })
+            });
+            if (!response.ok) {
+                throw new Error(`Ошибка сервера: ${response.status}`);
+            }
+            const updatedBook = await response.json();
+            Object.assign(book, updatedBook);
             renderBooks();
+        }
+        catch (error) {
+            console.error('Ошибка при сбросе рейтинга:', error);
         }
     }
 });
 
 /* обработчик изменения статуса книги */
-booksList.addEventListener('change', e => {
+booksList.addEventListener('change', async (e) => {
     if (e.target.classList.contains('statusSelect')) {
         const card = e.target.closest('.book_card');
         const bookId = Number(card.dataset.id);
         const newStatus = e.target.value;
 
         const book = books.find(book => book.id === bookId);
-        if (book) {
-            book.status = newStatus;
+        if (!book) {
+            console.error('Книга не найдена');
+            return;
+        }
 
-            if (newStatus !== 'read') {
-                book.rating = null;
+        try {
+            const response = await fetch(`${API_URL}/${bookId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus })
+            });
+            if (!response.ok) {
+                throw new Error(`Ошибка сервера: ${response.status}`);
             }
+            const updatedBook = await response.json();
+            Object.assign(book, updatedBook);
             renderBooks();
+        } catch (error) {
+            console.error('Ошибка при изменении статуса:', error);
+            e.target.value = book.status; // Возвращаем старое значение в случае ошибки
         }
     }
 });
@@ -208,4 +276,4 @@ function escapeHtml(text) {
 }
 
 
-renderBooks();
+fetchBooks();
