@@ -30,6 +30,7 @@ async function fetchBooks() {
         renderBooks();
     } catch (error) {
         console.error('Не удалось загрузить книги:', error.message);
+        showServerError(error.message);
     }
 }
 
@@ -69,6 +70,7 @@ bookForm.addEventListener('submit',async (e) => {
         bookForm.reset();
         renderBooks();
     } catch (error) {
+        showServerError(error.message);
         console.error('Не удалось добавить книгу:', error.message);
     }
 });
@@ -170,6 +172,7 @@ booksList.addEventListener('click', async (e) => {
             books = books.filter(book => book.id !== bookId);
             renderBooks();
         } catch (error) {
+            showServerError(error.message);
             console.error('Ошибка при удалении книги:', error);
         }
     }
@@ -194,6 +197,7 @@ booksList.addEventListener('click', async (e) => {
             Object.assign(book, updatedBook);
             renderBooks();
         } catch (error) {
+            showServerError(error.message);
             console.error('Ошибка при изменении рейтинга:', error);
         }
     }
@@ -218,6 +222,7 @@ booksList.addEventListener('click', async (e) => {
             renderBooks();
         }
         catch (error) {
+            showServerError(error.message);
             console.error('Ошибка при сбросе рейтинга:', error);
         }
     }
@@ -250,6 +255,7 @@ booksList.addEventListener('change', async (e) => {
             renderBooks();
         } catch (error) {
             console.error('Ошибка при изменении статуса:', error);
+            showServerError(error.message);
             e.target.value = book.status; // Возвращаем старое значение в случае ошибки
         }
     }
@@ -273,6 +279,32 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+function showServerError(message) {
+    let container = document.querySelector('.server-error-block');
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'server-error-block';
+        document.body.appendChild(container);
+    }
+
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'server-error';
+    errorDiv.innerHTML=`
+    <span>${escapeHtml(message)}</span>
+    <button type="button" class="server-error-close">&times;</button>
+    `;
+    container.appendChild(errorDiv);
+
+    const removeError = () => {
+        errorDiv.classList.add('hiding');
+        setTimeout(() => errorDiv.remove(), 300);
+    };
+
+    errorDiv.querySelector('.server-error-close').addEventListener('click', removeError);
+
+    setTimeout(removeError, 5000);
 }
 
 
