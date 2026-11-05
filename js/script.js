@@ -15,9 +15,9 @@ const noResultsMessage = document.getElementById('noResultsMessage');
 const API_URL = 'http://localhost:3000/books';
 
 
-/* массив для хранения книг в localStorage */
 let books = [];
 
+/* функция для получения списка книг с сервера */
 async function fetchBooks() { 
     try {
         const response = await fetch(API_URL);
@@ -50,6 +50,7 @@ bookForm.addEventListener('submit',async (e) => {
         return;
     }
     
+    /* Отправляем POST-запрос на сервер для добавления новой книги */
     try {
         const response = await fetch(API_URL, {
             method: 'POST',
@@ -162,6 +163,7 @@ booksList.addEventListener('click', async (e) => {
 
         if(!isConfirmed) return;
 
+        /* Отправляем DELETE-запрос на сервер для удаления книги */
         try {
             const response = await fetch(`${API_URL}/${bookId}`, {
                 method: 'DELETE'
@@ -184,6 +186,8 @@ booksList.addEventListener('click', async (e) => {
         const starValue = Number(e.target.dataset.value);
 
         const book = books.find(book => book.id === bookId);
+
+        /* Отправляем PATCH-запрос на сервер для изменения рейтинга книги */
         try {
             const response = await fetch(`${API_URL}/${bookId}`, {
                 method: 'PATCH',
@@ -208,6 +212,8 @@ booksList.addEventListener('click', async (e) => {
         const bookId = Number(card.dataset.id);
 
         const book = books.find(book => book.id === bookId);
+
+        /* Отправляем PATCH-запрос на сервер для сброса рейтинга книги */
         try {
             const response = await fetch(`${API_URL}/${bookId}`, {
                 method: 'PATCH',
@@ -241,6 +247,7 @@ booksList.addEventListener('change', async (e) => {
             return;
         }
 
+        /* Отправляем PATCH-запрос на сервер для изменения статуса книги */
         try {
             const response = await fetch(`${API_URL}/${bookId}`, {
                 method: 'PATCH',
@@ -307,5 +314,5 @@ function showServerError(message) {
     setTimeout(removeError, 5000);
 }
 
-
+/* Инициализация приложения: получаем список книг с сервера при загрузке страницы */
 fetchBooks();
