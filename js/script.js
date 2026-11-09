@@ -23,7 +23,8 @@ async function fetchBooks() {
         const response = await fetch(API_URL);
 
         if (!response.ok) {
-            throw new Error(`Ошибка при получении данных: ${response.status}`);
+            const errorData = await response.json().catch(() => null);
+            throw new Error(errorData?.error || `Ошибка при получении данных: ${response.status}`);
         }
 
         books = await response.json();
@@ -63,7 +64,8 @@ bookForm.addEventListener('submit',async (e) => {
         });
 
         if (!response.ok) {
-            throw new Error(`Ошибка сервера: ${response.status}`);
+            const errorData = await response.json().catch(() => null);
+            throw new Error(errorData?.error || `Ошибка при получении данных: ${response.status}`);
         }
 
         const createdBook = await response.json();
@@ -169,8 +171,9 @@ booksList.addEventListener('click', async (e) => {
                 method: 'DELETE'
             });
             if (!response.ok) {
-                throw new Error(`Ошибка сервера: ${response.status}`);
-            }
+            const errorData = await response.json().catch(() => null);
+            throw new Error(errorData?.error || `Ошибка при получении данных: ${response.status}`);
+        }
             books = books.filter(book => book.id !== bookId);
             renderBooks();
         } catch (error) {
@@ -195,8 +198,9 @@ booksList.addEventListener('click', async (e) => {
                 body: JSON.stringify({ rating: starValue })
             });
             if (!response.ok) {
-                throw new Error(`Ошибка сервера: ${response.status}`);
-            }
+            const errorData = await response.json().catch(() => null);
+            throw new Error(errorData?.error || `Ошибка при получении данных: ${response.status}`);
+        }
             const updatedBook = await response.json();
             Object.assign(book, updatedBook);
             renderBooks();
@@ -221,8 +225,9 @@ booksList.addEventListener('click', async (e) => {
                 body: JSON.stringify({ rating: null })
             });
             if (!response.ok) {
-                throw new Error(`Ошибка сервера: ${response.status}`);
-            }
+            const errorData = await response.json().catch(() => null);
+            throw new Error(errorData?.error || `Ошибка при получении данных: ${response.status}`);
+        }
             const updatedBook = await response.json();
             Object.assign(book, updatedBook);
             renderBooks();
@@ -255,8 +260,9 @@ booksList.addEventListener('change', async (e) => {
                 body: JSON.stringify({ status: newStatus })
             });
             if (!response.ok) {
-                throw new Error(`Ошибка сервера: ${response.status}`);
-            }
+            const errorData = await response.json().catch(() => null);
+            throw new Error(errorData?.error || `Ошибка при получении данных: ${response.status}`);
+            }   
             const updatedBook = await response.json();
             Object.assign(book, updatedBook);
             renderBooks();
@@ -289,6 +295,10 @@ function escapeHtml(text) {
 }
 
 function showServerError(message) {
+    if (!message || message === 'Failed to fetch' || message.includes('fetch')) {
+        message = 'Не удалось подключиться к серверу. Убедитесь, что сервер запущен.';
+    }
+
     let container = document.querySelector('.server-error-block');
     if (!container) {
         container = document.createElement('div');

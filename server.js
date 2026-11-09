@@ -50,7 +50,16 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
-    const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
+    let parsedUrl;
+    try {
+        parsedUrl = new URL(req.url, `http://${req.headers.host}`);
+    }
+    catch (err) {
+        res.statusCode = 400;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: 'Некорректный URL' }));
+        return;
+    }
 
     /* Обрабатываем GET-запросы к /books с фильтрацией по параметрам */
     if (parsedUrl.pathname === '/books' && req.method === 'GET') {
@@ -64,12 +73,12 @@ const server = http.createServer(async (req, res) => {
 
         if (queryParams.has('author')) {
             const author = queryParams.get('author').trim().toLowerCase();
-            filteredBooks = filteredBooks.filter(book => book.author.toLowerCase().includes(author));
+            filteredBooks = filteredBooks.filter(book => String(book.author || '').toLowerCase().includes(author));
         }
 
         if (queryParams.has('title')) {
             const title = queryParams.get('title').trim().toLowerCase();
-            filteredBooks = filteredBooks.filter(book => book.title.toLowerCase().includes(title));
+            filteredBooks = filteredBooks.filter(book => String(book.title || '').toLowerCase().includes(title));
         }
 
         if (queryParams.has('status')) {
@@ -104,6 +113,12 @@ const server = http.createServer(async (req, res) => {
                 res.statusCode = 400;
                 res.setHeader('Content-Type', 'application/json');
                 res.end(JSON.stringify({ error: 'Оценка должна быть числом от 1 до 5' }));
+                return;
+            }
+            if (newBook.author && typeof newBook.author !== 'string') {
+                res.statusCode = 400;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Автор должен быть строкой' }));
                 return;
             }
             newBook.id = Date.now();
@@ -156,7 +171,7 @@ const server = http.createServer(async (req, res) => {
                 res.end(JSON.stringify({ error: 'Название книги не может быть пустым' }));
                 return;
             }
-            if (updates.status && !validStatuses.includes(updates.status)) {
+            if (updates.status !== undefined && !validStatuses.includes(updates.status)) {
                 res.statusCode = 400;
                 res.setHeader('Content-Type', 'application/json');
                 res.end(JSON.stringify({ error: 'Некорректный статус книги' }));
@@ -167,6 +182,15 @@ const server = http.createServer(async (req, res) => {
                 res.setHeader('Content-Type', 'application/json');
                 res.end(JSON.stringify({ error: 'Оценка должна быть числом от 1 до 5' }));
                 return;
+            }
+            if (updates.author !== undefined && typeof updates.author !== 'string') {
+                res.statusCode = 400;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Автор должен быть строкой' }));
+                return;
+            }
+            if (updates.author !== undefined) {
+                updates.author = updates.author.trim() || "Неизвестный автор";
             }
             Object.assign(book, updates);
             if (book.status !== 'read') {
