@@ -385,6 +385,64 @@ body{
   color: #ffffff;
 }
 
+.server-error-block{
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 1000;
+  pointer-events: none;
+}
+.server-error{
+  pointer-events: auto;
+  background-color: var(--danger);
+  color: #ffffff;
+  border: 1px solid var(--danger);
+  border-radius: 8px;
+  padding: 14px 18px;
+  min-width: 280px;
+  max-width: 400px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  animation: slideIn 0.3s ease forwards;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.server-error.hiding{
+  opacity: 0;
+  transform: translateX(40px);
+}
+
+.server-error-close{
+  background: none;
+  border: none;
+  color: #ffffff;
+  font-size: 18px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 2px 4px;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(50px);
+  }
+  to {
+    opacity: 0.80;
+    transform: translateX(0);
+  }
+}
+
+
+
+
 /* Медиа-запросы */
 @media (max-width: 768px){
   .container{
@@ -409,6 +467,16 @@ body{
     flex-direction: row;
     flex-wrap: wrap;
     gap: 8px;
+  }
+
+  .server-error-block{
+    left: 20px;
+    right: 20px;
+    bottom: 16px;
+  }
+
+  .server-error{
+    max-width: 100%;
   }
   
 }
