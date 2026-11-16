@@ -447,7 +447,7 @@ books = await response.json();         Браузер дожидается ок�
 # Итерация 2: База данных
 ## Что изучил:
 
-## package.json и package-lock.json
+## package.json и package-lock.json, .env
 
 **package.json** - это паспорт проекта
 
@@ -488,6 +488,25 @@ books = await response.json();         Браузер дожидается ок�
 **package-lock.json** — это лок-файл (файл блокировки), содержащий информацию о зависимостях/пакетах с их точными номерами версий, которые были установлены для проекта node.js.
 
 *(npm сам его обновляет)*
+
+
+**.env** - это файл с переменными окружения для безопасности и смены под любого пользователя, чтобы не менять отдельно в каждом месте, можно поменять просто переменную в .env 
+
+сохраняем переменные окружения в .env
+```
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_NAME=book_shelf
+```
+
+используем их везде через `process.env.var`
+```
+const host = process.env.DB_HOST;
+const password = process.env.DB_PASSWORD;
+```
+
 
 
 ## PostgreSQL
@@ -655,6 +674,93 @@ COMMIT; -- применили всё сразу
 ```
 Если где-то случилась ошибка, вызывается ROLLBACK, и база возвращается в исходное состояние до начала транзакции.
 
+
+### 11. Схемы (Schemas):
+
+**Иерархия в PostgreSQL:** База данных -> Схема -> Таблица
+
+**Пример:**
+- **База данных** — это отдельный жёсткий диск.
+- **Схема** — это папка на этом диске.
+- **Таблица** — это конкретный файл (Excel-таблица), лежащий внутри этой папки.
+
+**Схема** - Пространство имён (namespace), или просто папка внутри базы данных, которая группирует таблицы, функции и типы.
+
+**Схема по умолчанию** — **public**: Когда ты создаёшь новую базу, в ней автоматически уже есть схема с названием public.
+
+**Зачем нужны схемы:**
+
+**1. Разделение проекта на модули:** В больших проектах таблицы делят по схемам, чтобы не было свалки в одном месте. Например:
+
+  - auth.users, auth.tokens (модуль авторизации)
+  - billing.invoices, billing.payments (модуль платежей)
+  - public.books (основной контент)
+
+**2. Одинаковые имена таблиц:** В разных схемах могут быть таблицы с одинаковыми именами, и они не будут конфликтовать: shop_a.orders и shop_b.orders.
+
+**3. Права доступа:** Можно дать пользователю права на чтение только одной схемы (например, аналитикам открыть только схему analytics, закрыв доступ к billing).
+
+
+**Создание и удаление схемы:**
+```
+CREATE SCHEMA my_schema;
+
+DROP SCHEMA my_schema CASCADE;
+```
+
+### 12. Команды SQL:
+- **JOIN:**
+  ```
+  SELECT b.id, b.title, n.text, n.created_at
+  FROM books b
+  JOIN notes n ON b.id = n.book_id;
+  ```
+- **Агрегатные функции и GROUP BY:**
+  - **COUNT(*) / COUNT(col)** — количество строк.
+  - **AVG(col)** — среднее значение (например, средний рейтинг книги).
+  - **SUM(col)** — сумма.
+  - **MIN(col) / MAX(col)** — минимум / максимум.
+
+  **GROUP BY:** Групирует строки. Правило: все колонки в SELECT, к которым не применена функция, обязаны быть указаны в GROUP BY.
+  ```
+  SELECT b.id, b.title, COUNT(n.id) AS notes_count
+  FROM books b
+  LEFT JOIN notes n ON b.id = n.book_id
+  GROUP BY b.id, b.title;
+  ```
+
+- **WHERE и HAVING:**
+  - WHERE — фильтрует строки ДО группировки (по обычным полям таблицы).
+  - HAVING — фильтрует группы ПОСЛЕ агрегации (по результатам COUNT, AVG и т.д.).
+  ```
+  SELECT b.title, COUNT(n.id) AS notes_count
+  FROM books b
+  LEFT JOIN notes n ON b.id = n.book_id
+  WHERE b.status = 'read'          только прочитанные книги
+  GROUP BY b.id, b.title
+  HAVING COUNT(n.id) > 1;          только у которых больше 1 заметки
+  ```
+
+- **Агрегация строк:**
+
+  - **string_agg** — склеивает текст через разделитель или перенос строки:
+    ```
+    SELECT b.title, string_agg(n.text, '  |  ') AS all_notes
+    FROM books b
+    LEFT JOIN notes n ON b.id = n.book_id
+    GROUP BY b.id, b.title;
+    ```
+  - **json_agg** - упаковывает в готовый JSON-массив:
+    ```
+    SELECT b.id, b.title, json_agg(json_build_object('id', n.id, 'text', n.text)) AS notes
+    FROM books b
+    LEFT JOIN notes n ON b.id = n.book_id
+    GROUP BY b.id;
+    ```
+
+
+
+
 ## Пакет pg(node-postgres)
 
 **Client, Pool** - это типы подключения к базе данных
@@ -770,3 +876,7 @@ console.log(res.rows[0])
 ### 3.
 * **Запрос:** Как управлять правами пользователей в PostgreSQL?
 * **Ответ ИИ:** Принцип наименьших привилегий, команда `REVOKE` для ограничения доступа, разбор зависимости объектов от роли и цепочка команд `REASSIGN OWNED BY ...` + `DROP OWNED BY ...` перед удалением.
+
+### 4. 
+* **Запрос:**  зачем писать ON DELETE CASCADE, если можно просто написать CASCADE, когда удаляешь?
+* **Ответ ИИ:** DROP TABLE ... CASCADE — уничтожает таблицу и её структуру при инициализации/миграции. ON DELETE CASCADE — правило для обычных пользователей: удалил книгу (DELETE FROM books...) -> её заметки удалились следом автоматически.
