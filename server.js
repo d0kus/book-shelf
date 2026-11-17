@@ -1,16 +1,21 @@
 /* Добавляем модуль http для создания сервера */
 const http = require('node:http');
 
+const { Pool } = require('pg');
+
+/* Создаем пул соединений с базой данных PostgreSQL */
+const pool = new Pool({
+    user: process.env.DB_USER || 'postgres',
+    host: process.env.DB_HOST || 'localhost',
+    database: process.env.DB_NAME || 'book_shelf',
+    password: process.env.DB_PASSWORD || 'postgres',
+    port: process.env.DB_PORT || 5432,
+});
+
 /* Устанавливаем хост и порт для сервера */
 const hostname = '127.0.0.1';
 const port = 3000;
 
-/* Захардоженные данные о книгах */
-let books = [
-    { id: 1, title: 'The Great Gatsby', author: 'F. Scott Fitzgerald', status: 'read', rating: 5 },
-    { id: 2, title: 'To Kill a Mockingbird', author: 'Harper Lee', status: 'reading', rating: null },
-    { id: 3, title: '1984', author: 'George Orwell', status: 'want', rating: null }
-]
 const validStatuses = ["want", "reading", "read"];
 
 /* Функция для получения тела запроса в формате JSON */
@@ -64,32 +69,57 @@ const server = http.createServer(async (req, res) => {
 
     /* Обрабатываем GET-запросы к /books с фильтрацией по параметрам */
     if (parsedUrl.pathname === '/books' && req.method === 'GET') {
-        const queryParams = parsedUrl.searchParams;
-        let filteredBooks = books;
+        try {
+            const queryParams = parsedUrl.searchParams;
+            
+            const conditions = [];
+            const values = [];
 
-        if (queryParams.has('id')){
-            const id = parseInt(queryParams.get('id'));
-            filteredBooks = filteredBooks.filter(book => book.id === id);
+            if (queryParams.has('id')) {
+                values.push(parseInt(queryParams.get('id')));
+                conditions.push(`b.id = $${values.length}`);
+            }
+
+            if (queryParams.has('title')) {
+                values.push(`%${queryParams.get('title').trim()}%`);
+                conditions.push(`b.title ILIKE $${values.length}`);
+            }
+
+            if (queryParams.has('author')) {
+                values.push(`%${queryParams.get('author').trim()}%`);
+                conditions.push(`b.author ILIKE $${values.length}`);
+            }
+
+            if (queryParams.has('status')) {
+                const statuses = queryParams.getAll('status');
+                values.push(statuses);
+                conditions.push(`b.status = ANY($${values.length})`);
+            }
+
+            const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+            const query = `
+                SELECT b.id, b.title, b.author, b.status, b.rating,
+                     COALESCE(json_agg(json_build_object('id', n.id, 'text', n.text, 'created_at', n.created_at) ORDER BY n.created_at DESC)
+                    FILTER (WHERE n.id IS NOT NULL),
+                    '[]'
+                     ) AS notes
+                FROM books b LEFT JOIN notes n ON b.id = n.book_id
+                 ${whereClause}
+                GROUP BY b.id
+                ORDER BY b.id;
+                `;
+            const result = await pool.query(query, values);
+                    
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(result.rows));
+        } catch (err) {
+            console.error('Ошибка при выполнении запроса к базе данных:', err.message);
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Внутренняя ошибка сервера' }));
         }
-
-        if (queryParams.has('author')) {
-            const author = queryParams.get('author').trim().toLowerCase();
-            filteredBooks = filteredBooks.filter(book => String(book.author || '').toLowerCase().includes(author));
-        }
-
-        if (queryParams.has('title')) {
-            const title = queryParams.get('title').trim().toLowerCase();
-            filteredBooks = filteredBooks.filter(book => String(book.title || '').toLowerCase().includes(title));
-        }
-
-        if (queryParams.has('status')) {
-            const statuses = queryParams.getAll('status');
-            filteredBooks = filteredBooks.filter(book => statuses.includes(book.status));
-        }
-
-        res.statusCode = 200;
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify(filteredBooks));
     }
     
     /* Обрабатываем GET-запрос к корневому пути */
