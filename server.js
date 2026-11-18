@@ -1,6 +1,7 @@
 /* Добавляем модуль http для создания сервера */
 const http = require('node:http');
 
+/* Добавляем модуль pg для работы с PostgreSQL */
 const { Pool } = require('pg');
 
 /* Создаем пул соединений с базой данных PostgreSQL */
@@ -300,17 +301,25 @@ const server = http.createServer(async (req, res) => {
             res.end(JSON.stringify({ error: 'Некорректный ID книги' }));
             return;
         }
-        const book = books.find(b => b.id === id);
-        if (!book) {
-            res.statusCode = 404;
+        
+        try {
+            const deleteResult = await pool.query('DELETE FROM books WHERE id = $1 RETURNING *;', [id]);
+            if (deleteResult.rowCount === 0) {
+                res.statusCode = 404;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Книга не найдена' }));
+                return;
+            }
+
+            res.statusCode = 200;
             res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify({ error: 'Книга не найдена' }));
-            return;
+            res.end(JSON.stringify({ message: 'Книга успешно удалена' }));
+        } catch (err) {
+            console.error('Ошибка при выполнении запроса к базе данных:', err.message);
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Внутренняя ошибка сервера' }));
         }
-        books = books.filter(b => b.id !== id);
-        res.statusCode = 200;
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ message: 'Книга успешно удалена' }));
     }
         
     /* Обрабатываем остальные запросы */
