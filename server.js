@@ -207,58 +207,87 @@ const server = http.createServer(async (req, res) => {
             res.end(JSON.stringify({ error: 'Некорректный ID книги' }));
             return;
         }
-        const book = books.find(b => b.id === id);
-        if (!book) {
-            res.statusCode = 404;
+        let updates;
+        try {
+            updates = await getRequestBody(req);
+        } catch (err) {
+            res.statusCode = 400;
             res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify({ error: 'Книга не найдена' }));
+            res.end(JSON.stringify({ error: 'Некорректный JSON в теле запроса' }));
             return;
         }
+        
+        delete updates.id;
+
+        if (updates.title !== undefined) {
+            if (typeof updates.title !== 'string' || !updates.title.trim()) {
+                res.statusCode = 400;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Название книги должно быть непустой строкой' }));
+                return;
+            }
+            updates.title = updates.title.trim();
+        }
+        if (updates.status !== undefined && !validStatuses.includes(updates.status)) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Некорректный статус книги' }));
+            return;
+        }
+        if (updates.rating !== undefined && updates.rating !== null && (!Number.isInteger(updates.rating) || updates.rating < 1 || updates.rating > 5)) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Оценка должна быть числом от 1 до 5' }));
+            return;
+        }
+        if (updates.author !== undefined) {
+            if (typeof updates.author !== 'string') {
+                res.statusCode = 400;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Автор должен быть строкой' }));
+                return;
+            }
+            updates.author = updates.author.trim() || "Неизвестный автор";
+        }
+
         try {
-            const updates = await getRequestBody(req);
-            delete updates.id;
-            if (updates.title !== undefined) {
-                if (typeof updates.title !== 'string' || !updates.title.trim()) {
-                    res.statusCode = 400;
-                    res.setHeader('Content-Type', 'application/json');
-                    res.end(JSON.stringify({ error: 'Название книги должно быть непустой строкой' }));
-                    return;
-                }
-                updates.title = updates.title.trim();
-            }
-            if (updates.status !== undefined && !validStatuses.includes(updates.status)) {
-                res.statusCode = 400;
+            const checkResult = await pool.query('SELECT * FROM books WHERE id = $1', [id]);
+            if (checkResult.rowCount === 0) {
+                res.statusCode = 404;
                 res.setHeader('Content-Type', 'application/json');
-                res.end(JSON.stringify({ error: 'Некорректный статус книги' }));
+                res.end(JSON.stringify({ error: 'Книга не найдена' }));
                 return;
             }
-            if (updates.rating !== undefined && updates.rating !== null && (!Number.isInteger(updates.rating) || updates.rating < 1 || updates.rating > 5)) {
-                res.statusCode = 400;
-                res.setHeader('Content-Type', 'application/json');
-                res.end(JSON.stringify({ error: 'Оценка должна быть числом от 1 до 5' }));
-                return;
+
+            const currentBook = checkResult.rows[0];
+
+            const finalTitle = updates.title ?? currentBook.title;
+            const finalAuthor = updates.author ?? currentBook.author;
+            const finalStatus = updates.status ?? currentBook.status;
+            let finalRating;
+            if (finalStatus !== 'read') {
+                finalRating = null;
+            } else {
+                finalRating = updates.rating !== undefined ? updates.rating : currentBook.rating;
             }
-            if (updates.author !== undefined) {
-                if (typeof updates.author !== 'string') {
-                    res.statusCode = 400;
-                    res.setHeader('Content-Type', 'application/json');
-                    res.end(JSON.stringify({ error: 'Автор должен быть строкой' }));
-                    return;
-                }
-                updates.author = updates.author.trim() || "Неизвестный автор";
-            }
-            Object.assign(book, updates);
-            if (book.status !== 'read') {
-                book.rating = null;
-            }
+
+            const updateQuery = `
+                UPDATE books
+                SET title = $1, author = $2, status = $3, rating = $4
+                WHERE id = $5
+                RETURNING *;
+            `;
+            const updateResult = await pool.query(updateQuery, [finalTitle, finalAuthor, finalStatus, finalRating, id]);
+            const updatedBook = updateResult.rows[0];
+
             res.statusCode = 200;
             res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify(book));
-        }
-        catch (err) {
-        res.statusCode = 400;
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ error: 'Некорректный JSON в теле запроса' }));
+            res.end(JSON.stringify(updatedBook));
+        } catch (err) {
+            console.error('Ошибка при выполнении запроса к базе данных:', err.message);
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Внутренняя ошибка сервера' }));
         }
     }
     
