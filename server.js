@@ -158,7 +158,6 @@ const server = http.createServer(async (req, res) => {
                 res.end(JSON.stringify({ error: 'Автор должен быть строкой' }));
                 return;
             }
-            newBook.id = Date.now();
             newBook.title = newBook.title.trim();
             if (newBook.author) {
                 newBook.author = newBook.author.trim();
@@ -171,10 +170,26 @@ const server = http.createServer(async (req, res) => {
             else {
                 newBook.rating = newBook.rating ?? null;
             }
-            books.push(newBook);
-            res.statusCode = 201;
-            res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify(newBook));
+            const insertQuery = `
+                INSERT INTO books (title, author, status, rating)
+                VALUES ($1, $2, $3, $4)
+                RETURNING *;
+            `;
+
+            try {
+                const result = await pool.query(insertQuery, [newBook.title, newBook.author, newBook.status, newBook.rating]);
+                const createdBook = result.rows[0];
+                createdBook.notes = [];
+                res.statusCode = 201;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify(createdBook));
+            }
+            catch (err) {
+                console.error('Ошибка при выполнении запроса к базе данных:', err.message);
+                res.statusCode = 500;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Внутренняя ошибка сервера' }));
+            }
         }
         catch (err) {
             res.statusCode = 400;
