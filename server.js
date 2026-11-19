@@ -321,7 +321,134 @@ const server = http.createServer(async (req, res) => {
             res.end(JSON.stringify({ error: 'Внутренняя ошибка сервера' }));
         }
     }
-        
+
+    /* Обрабатываем POST-запросы к /books/:id/notes для добавления заметки к книге по ID */
+    else if (parsedUrl.pathname.startsWith('/books/') && parsedUrl.pathname.replace(/\/$/, '').endsWith('/notes') && req.method === 'POST') {
+        const id = parseInt(parsedUrl.pathname.split('/')[2]);
+        if (isNaN(id)) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Некорректный ID книги' }));
+            return;
+        }
+
+        let newNote;
+        try {
+            newNote = await getRequestBody(req);
+        } catch (err) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Некорректный JSON в теле запроса' }));
+            return;
+        }
+
+        if (typeof newNote.text !== 'string' || !newNote.text.trim()) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Текст заметки должен быть непустой строкой' }));
+            return;
+        }
+        newNote.text = newNote.text.trim();
+
+        try {
+            const checkResult = await pool.query('SELECT * FROM books WHERE id = $1', [id]);
+            if (checkResult.rowCount === 0) {
+                res.statusCode = 404;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Книга не найдена' }));
+                return;
+            }
+            const insertResult = await pool.query('INSERT INTO notes (book_id, text) VALUES ($1, $2) RETURNING *;', [id, newNote.text]);
+            res.statusCode = 201;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(insertResult.rows[0]));
+        } catch (err) {
+            console.error('Ошибка при выполнении запроса к базе данных:', err.message);
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Внутренняя ошибка сервера' }));
+        }
+    }
+
+    /* Обрабатываем PATCH-запросы к /notes/:id для обновления заметки по ID */
+    else if (parsedUrl.pathname.startsWith('/notes/') && req.method === 'PATCH') {
+        const noteId = parseInt(parsedUrl.pathname.split('/')[2]);
+        if (isNaN(noteId)) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Некорректный ID заметки' }));
+            return;
+        }
+
+        let updates;
+        try {
+            updates = await getRequestBody(req);
+        } catch (err) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Некорректный JSON в теле запроса' }));
+            return;
+        }
+        if (updates.text === undefined || typeof updates.text !== 'string' || !updates.text.trim()) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Текст заметки должен быть непустой строкой' }));
+            return;
+        }
+        updates.text = updates.text.trim();
+
+        try {
+            const updateResult = await pool.query('UPDATE notes SET text = $1 WHERE id = $2 RETURNING *;', [updates.text, noteId]);
+
+            if (updateResult.rowCount === 0) {
+                res.statusCode = 404;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Заметка не найдена' }));
+                return;
+            }
+
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(updateResult.rows[0]));
+        } catch (err) {
+            console.error('Ошибка при выполнении запроса к базе данных:', err.message);
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Внутренняя ошибка сервера' }));
+        }
+    }
+
+    /* Обрабатываем DELETE-запросы к /notes/:id для удаления заметки по ID */
+    else if (parsedUrl.pathname.startsWith('/notes/') && req.method === 'DELETE') {
+        const noteId = parseInt(parsedUrl.pathname.split('/')[2]);
+        if (isNaN(noteId)) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Некорректный ID заметки' }));
+            return;
+        }
+
+        try {
+            const deleteResult = await pool.query('DELETE FROM notes WHERE id = $1 RETURNING *;', [noteId]);
+            if (deleteResult.rowCount === 0) {
+                res.statusCode = 404;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Заметка не найдена' }));
+                return;
+            }
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ message: 'Заметка успешно удалена' }));
+        } catch (err) {
+            console.error('Ошибка при выполнении запроса к базе данных:', err.message);
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Внутренняя ошибка сервера' }));
+        }
+    }
+
+
+
     /* Обрабатываем остальные запросы */
     else {
         res.statusCode = 404;
