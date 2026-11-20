@@ -13,6 +13,7 @@ const wantCount = document.querySelector('.want-count');
 const filterOption = document.querySelector('.filter-options');
 const noResultsMessage = document.getElementById('noResultsMessage');
 const API_URL = 'http://localhost:3000/books';
+const NOTES_API_URL = 'http://localhost:3000/notes';
 
 
 let books = [];
@@ -143,6 +144,29 @@ function renderBooks(){
                     <button type="button" class="clear-rating">Сбросить</button>
                 </div>
 
+                <div class="book_notes">
+                    <h4>Заметки:</h4>
+                    <div class="notes_list">
+                        ${(book.notes && book.notes.length > 0) ? book.notes.map(note => `
+                        <div class="note_item" data-note-id="${note.id}">
+                            <div class="note_header">
+                                <span class="note_date">${new Date(note.created_at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                                <div class="note_actions">
+                                    <button type="button" class="btn-edit-note" title="Редактировать">Редактировать</button>
+                                    <button type="button" class="btn-delete-note" title="Удалить">Удалить</button>
+                                </div>
+                            </div>
+                            <div class="note_text">${escapeHtml(note.text)}</div>
+                        </div>
+                        `).join('') : '<p class="no-notes">Нет заметок</p>'}
+                    </div>
+
+                    <div class="add_note_form">
+                        <input type="text" class="note_input" placeholder="Введите заметку...">
+                        <button type="button" class="btn-add-note">Добавить</button>
+                    </div>
+                </div>
+
                 <div class="book_actions">
                     <button type="button" class="btn-delete">Удалить</button>
                 </div> `;
@@ -237,6 +261,126 @@ booksList.addEventListener('click', async (e) => {
             console.error('Ошибка при сбросе рейтинга:', error);
         }
     }
+
+    /* обработчик кнопки добавления заметки */
+    if (e.target.classList.contains('btn-add-note')) {
+        const card = e.target.closest('.book_card');
+        const bookId = Number(card.dataset.id);
+
+        const noteInput = card.querySelector('.note_input');
+        const noteText = noteInput.value.trim();
+
+        if (!noteText) {
+            noteInput.focus();
+            return;
+        }
+        
+        const currentBook = books.find(book => book.id === bookId);
+
+        try {
+            const response = await fetch(`${API_URL}/${bookId}/notes`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: noteText })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => null);
+                throw new Error(errorData?.error || `Ошибка при получении данных: ${response.status}`);
+            }
+            const newNote = await response.json();
+
+            if (!currentBook.notes) {
+                currentBook.notes = [];
+            }
+            currentBook.notes.unshift(newNote);
+            renderBooks();
+        } catch (error) {
+            console.error('Ошибка при добавлении заметки:', error);
+            showServerError(error.message);
+        }
+    }
+
+    /* обработчик кнопки редактирования заметки */
+    if (e.target.classList.contains('btn-edit-note')) {
+        const card = e.target.closest('.book_card');
+        const bookId = Number(card.dataset.id);
+        const noteItem = e.target.closest('.note_item');
+        const noteId = Number(noteItem.dataset.noteId);
+
+
+        const noteTextElement = noteItem.querySelector('.note_text');
+        const oldText = noteTextElement.textContent;
+
+        const newText = prompt('Редактировать заметку:', oldText);
+
+        if (newText === null || newText.trim() === oldText) return;
+
+        const trimmedText = newText.trim();
+
+        if (!trimmedText) {
+            alert('Заметка не может быть пустой.');
+            return;
+        }
+
+        const currentBook = books.find(book => book.id === bookId);
+
+        try {
+            const response = await fetch(`${NOTES_API_URL}/${noteId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: trimmedText })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => null);
+                throw new Error(errorData?.error || `Ошибка при получении данных: ${response.status}`);
+            }
+
+            const updatedNote = await response.json();
+
+            const note = currentBook.notes.find(note => note.id === noteId);
+            if (note) {
+                note.text = updatedNote.text;
+            }   
+            renderBooks();
+        } catch (error) {
+            console.error('Ошибка при обновлении заметки:', error);
+            showServerError(error.message);
+        }
+    }
+
+    /* обработчик кнопки удаления заметки */
+    if (e.target.classList.contains('btn-delete-note')) {
+        const card = e.target.closest('.book_card');
+        const bookId = Number(card.dataset.id);
+        const noteItem = e.target.closest('.note_item');
+        const noteId = Number(noteItem.dataset.noteId);
+
+        if (!confirm('Вы уверены, что хотите удалить эту заметку?')) return;
+
+        const currentBook = books.find(book => book.id === bookId);
+
+        try {
+            const response = await fetch(`${NOTES_API_URL}/${noteId}`, {
+                method: 'DELETE'
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => null);
+                throw new Error(errorData?.error || `Ошибка при получении данных: ${response.status}`);
+            }
+
+            const note = currentBook.notes.find(note => note.id === noteId);
+            if (note) {
+                currentBook.notes = currentBook.notes.filter(n => n.id !== noteId);
+            }
+            renderBooks();
+        } catch (error) {
+            console.error('Ошибка при удалении заметки:', error);
+            showServerError(error.message);
+        }
+    }
 });
 
 /* обработчик изменения статуса книги */
@@ -294,6 +438,7 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+/* функция для отображения ошибки подключения к серверу */
 function showServerError(message) {
     if (!message || message === 'Failed to fetch' || message.includes('fetch')) {
         message = 'Не удалось подключиться к серверу. Убедитесь, что сервер запущен.';

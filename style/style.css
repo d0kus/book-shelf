@@ -281,7 +281,7 @@ body{
   display: flex;
   flex-direction: column;
   gap: 14px;
-  justify-content: space-between;
+  justify-content: flex-start;
 }
 
 .book_card[data-status="read"]{
@@ -368,6 +368,10 @@ body{
   color: var(--text-main);
 }
 
+.book_actions{
+  margin-top: auto;
+}
+
 .book_actions .btn-delete{
   width: 100%;
   padding: 8px;
@@ -378,6 +382,7 @@ body{
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
+  margin-top: 10px;
 }
 
 .book_actions .btn-delete:hover{
@@ -438,6 +443,140 @@ body{
     opacity: 0.80;
     transform: translateX(0);
   }
+}
+
+.book_notes {
+  padding-top: 8px;
+  border-top: 1px dashed var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.book_notes h4 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.notes_list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 180px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.no-notes {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-style: italic;
+  margin: 0;
+}
+
+.note_item {
+  background-color: var(--bg-page);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column; 
+  gap: 6px;
+}
+
+.note_header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.note_body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex-grow: 1;
+}
+
+.note_text {
+  font-size: 13px;
+  color: var(--text-main);
+  word-break: break-word;
+  line-height: 1.4;
+  width: 100%;
+}
+
+.note_date {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.note_actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.note_actions button {
+  background: none;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--text-muted);
+}
+
+.note_actions .btn-edit-note:hover {
+  background-color: var(--primary-color);
+  color: #fff;
+  border-color: var(--primary-color);
+}
+
+.note_actions .btn-delete-note:hover {
+  background-color: var(--danger);
+  color: #fff;
+  border-color: var(--danger);
+}
+
+.add_note_form {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.add_note_form .note_input {
+  flex-grow: 1;
+  padding: 6px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 12px;
+  outline: none;
+}
+
+.add_note_form .note_input:focus {
+  border-color: var(--primary-color);
+}
+
+.add_note_form .btn-add-note {
+  padding: 6px 12px;
+  background-color: var(--primary-color);
+  border: none;
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  white-space: nowrap;
+}
+
+.add_note_form .btn-add-note:hover {
+  opacity: 0.9;
 }
 
 
