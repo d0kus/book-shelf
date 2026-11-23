@@ -77,7 +77,14 @@ const server = http.createServer(async (req, res) => {
             const values = [];
 
             if (queryParams.has('id')) {
-                values.push(parseInt(queryParams.get('id')));
+                const id = parseInt(queryParams.get('id'));
+                if (isNaN(id)) {
+                    res.statusCode = 400;
+                    res.setHeader('Content-Type', 'application/json');
+                    res.end(JSON.stringify({ error: 'Некорректный ID книги' }));
+                    return;
+                }
+                values.push(id);
                 conditions.push(`b.id = $${values.length}`);
             }
 
@@ -217,7 +224,13 @@ const server = http.createServer(async (req, res) => {
             res.end(JSON.stringify({ error: 'Некорректный JSON в теле запроса' }));
             return;
         }
-        
+        if(!updates || typeof updates !== 'object'|| Array.isArray(updates)) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Тело запроса должно быть объектом' }));
+            return;
+        }
+
         delete updates.id;
 
         if (updates.title !== undefined) {
@@ -342,6 +355,13 @@ const server = http.createServer(async (req, res) => {
             return;
         }
 
+        if(!newNote || typeof newNote !== 'object' || Array.isArray(newNote)) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Тело запроса должно быть объектом' }));
+            return;
+        }
+
         if (typeof newNote.text !== 'string' || !newNote.text.trim()) {
             res.statusCode = 400;
             res.setHeader('Content-Type', 'application/json');
@@ -389,6 +409,13 @@ const server = http.createServer(async (req, res) => {
             res.end(JSON.stringify({ error: 'Некорректный JSON в теле запроса' }));
             return;
         }
+        if(!updates || typeof updates !== 'object'|| Array.isArray(updates)) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Тело запроса должно быть объектом' }));
+            return;
+        }
+
         if (updates.text === undefined || typeof updates.text !== 'string' || !updates.text.trim()) {
             res.statusCode = 400;
             res.setHeader('Content-Type', 'application/json');
