@@ -53,7 +53,8 @@ async function createTables() {
                 title VARCHAR(255) NOT NULL,
                 author VARCHAR(255) NOT NULL DEFAULT 'Неизвестный автор',
                 status VARCHAR(50) NOT NULL DEFAULT 'want' CHECK (status IN ('want', 'reading', 'read')),
-                rating INT CHECK (rating BETWEEN 1 AND 5)
+                rating INT CHECK (rating BETWEEN 1 AND 5),
+                created_at TIMESTAMPTZ DEFAULT NOW()
             )`
         );
         
@@ -63,7 +64,8 @@ async function createTables() {
                 book_id INT NOT NULL REFERENCES books(id) ON DELETE CASCADE,
                 text TEXT NOT NULL,
                 created_at TIMESTAMPTZ DEFAULT NOW()
-            );`
+            );
+            CREATE INDEX IF NOT EXISTS idx_notes_book_id ON notes(book_id);`
         );
         console.log('Таблицы books и notes успешно созданы.');
 

@@ -13,6 +13,10 @@ const pool = new Pool({
     port: process.env.DB_PORT || 5432,
 });
 
+pool.on('error', (err) => {
+    console.error('Непредвиденная ошибка в пуле PostgreSQL: ', err.message);
+});
+
 /* Устанавливаем хост и порт для сервера */
 const hostname = '127.0.0.1';
 const port = 3000;
@@ -107,7 +111,7 @@ const server = http.createServer(async (req, res) => {
             const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
             const query = `
-                SELECT b.id, b.title, b.author, b.status, b.rating,
+                SELECT b.id, b.title, b.author, b.status, b.rating, b.created_at,
                      COALESCE(json_agg(json_build_object('id', n.id, 'text', n.text, 'created_at', n.created_at) ORDER BY n.created_at DESC)
                     FILTER (WHERE n.id IS NOT NULL),
                     '[]'
@@ -172,6 +176,19 @@ const server = http.createServer(async (req, res) => {
             }
             newBook.author = newBook.author || "Неизвестный автор";
             
+            if (newBook.title.length > 255) {
+                res.statusCode = 400;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Название книги не должно превышать 255 символов' }));
+                return;
+            }
+            if (newBook.author.length > 255) {
+                res.statusCode = 400;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Имя автора не должно превышать 255 символов' }));
+                return;
+            }
+
             if (newBook.status !== 'read') {
                 newBook.rating = null;
             }
@@ -207,7 +224,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     /* Обрабатываем PATCH-запросы к /books/:id для обновления книги по ID */
-    else if (parsedUrl.pathname.startsWith('/books/') && req.method === 'PATCH') {
+    else if (/^\/books\/\d+\/?$/.test(parsedUrl.pathname) && req.method === 'PATCH') {
         const id = parseInt(parsedUrl.pathname.split('/')[2]);
         if (isNaN(id)) {
             res.statusCode = 400;
@@ -264,6 +281,20 @@ const server = http.createServer(async (req, res) => {
             updates.author = updates.author.trim() || "Неизвестный автор";
         }
 
+        if (updates.title && updates.title.length > 255) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Название книги не должно превышать 255 символов' }));
+            return;
+        }
+        if (updates.author && updates.author.length > 255) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Имя автора не должно превышать 255 символов' }));
+            return;
+        }
+
+
         try {
             const checkResult = await pool.query('SELECT * FROM books WHERE id = $1', [id]);
             if (checkResult.rowCount === 0) {
@@ -306,7 +337,7 @@ const server = http.createServer(async (req, res) => {
     }
     
     /* Обрабатываем DELETE-запросы к /books/:id для удаления книги по ID */
-    else if (parsedUrl.pathname.startsWith('/books/') && req.method === 'DELETE') {
+    else if (/^\/books\/\d+\/?$/.test(parsedUrl.pathname) && req.method === 'DELETE') {
         const id = parseInt(parsedUrl.pathname.split('/')[2]);
         if (isNaN(id)) {
             res.statusCode = 400;
