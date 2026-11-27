@@ -1,10 +1,10 @@
 const { Client } = require('pg');
 
 const baseConfig = {
-    user: process.env.DB_USER || 'postgres',
+    user: process.env.DB_ADMIN_USER || 'postgres',
     host: process.env.DB_HOST || 'localhost',
     port: process.env.DB_PORT || 5432,
-    password: process.env.DB_PASSWORD || 'postgres',
+    password: process.env.DB_ADMIN_PASSWORD || 'postgres',
 };
 
 const client = new Client({
@@ -26,6 +26,22 @@ async function initDB() {
         else {
             console.log(`Database ${process.env.DB_NAME || 'book_shelf'} already exists.`);
         }
+
+        const checkRole = await client.query(`SELECT 1 FROM pg_roles WHERE rolname = $1;`, [process.env.DB_USER || 'book_shelf_user']);
+        if (checkRole.rowCount === 0) {
+            await client.query(`
+                CREATE ROLE ${process.env.DB_USER || 'book_shelf_user'}
+                WITH LOGIN PASSWORD '${process.env.DB_PASSWORD || 'book_shelf_password'}';
+            `);
+            console.log(`Role ${process.env.DB_USER || 'book_shelf_user'} created successfully.`);
+        }
+        else {
+            await client.query(`
+                ALTER ROLE ${process.env.DB_USER || 'book_shelf_user'}
+                WITH LOGIN PASSWORD '${process.env.DB_PASSWORD || 'book_shelf_password'}';
+            `);
+            console.log(`Role ${process.env.DB_USER || 'book_shelf_user'} already exists. Password updated.`);
+        }
     } catch (err) {
         console.error('Error executing query', err.message);
     } finally {
@@ -44,7 +60,7 @@ async function createTables() {
         console.log(`Connected to PostgreSQL database ${process.env.DB_NAME || 'book_shelf'}`);
 
         await client2.query(`DROP TABLE IF EXISTS books,notes CASCADE;`);
-        console.log('Старые таблицы успешно удалены (если они были).');
+        console.log('Old tables dropped (if any existed).');
 
 
         await client2.query(`
@@ -67,7 +83,7 @@ async function createTables() {
             );
             CREATE INDEX IF NOT EXISTS idx_notes_book_id ON notes(book_id);`
         );
-        console.log('Таблицы books и notes успешно созданы.');
+        console.log('Tables books and notes created.');
 
         await client2.query(`
             INSERT INTO books (title, author, status, rating) VALUES
@@ -76,7 +92,7 @@ async function createTables() {
             ('1984', 'George Orwell', 'want', NULL),
             ('Pride and Prejudice', 'Jane Austen', 'read', 3);
         `);
-        console.log('Данные успешно вставлены в таблицу books.');
+        console.log('Seed data inserted into books.');
 
         await client2.query(`
             INSERT INTO notes (book_id, text) VALUES
@@ -86,7 +102,16 @@ async function createTables() {
             (3, 'A dystopian novel that explores totalitarianism.'),
             (4, 'A romantic novel that critiques societal norms.');
         `);
-        console.log('Данные успешно вставлены в таблицу notes.');
+        console.log('Seed data inserted into notes.');
+
+        await client2.query(`
+            GRANT CONNECT ON DATABASE ${process.env.DB_NAME || 'book_shelf'} TO ${process.env.DB_USER || 'book_shelf_user'};
+            GRANT USAGE ON SCHEMA public TO ${process.env.DB_USER || 'book_shelf_user'};
+            GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE books, notes TO ${process.env.DB_USER || 'book_shelf_user'};
+            GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${process.env.DB_USER || 'book_shelf_user'};
+        `);
+        console.log(`Privileges granted to user ${process.env.DB_USER || 'book_shelf_user'}.`);
+        
 
     } catch (err) {
         console.error('Error executing query', err.message);

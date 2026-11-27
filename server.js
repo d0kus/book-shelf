@@ -6,15 +6,15 @@ const { Pool } = require('pg');
 
 /* Создаем пул соединений с базой данных PostgreSQL */
 const pool = new Pool({
-    user: process.env.DB_USER || 'postgres',
+    user: process.env.DB_USER || 'book_shelf_user',
     host: process.env.DB_HOST || 'localhost',
     database: process.env.DB_NAME || 'book_shelf',
-    password: process.env.DB_PASSWORD || 'postgres',
+    password: process.env.DB_PASSWORD || 'book_shelf_password',
     port: process.env.DB_PORT || 5432,
 });
 
 pool.on('error', (err) => {
-    console.error('Непредвиденная ошибка в пуле PostgreSQL: ', err.message);
+    console.error('Unexpected PostgreSQL pool error:', err.message);
 });
 
 /* Устанавливаем хост и порт для сервера */
@@ -127,7 +127,7 @@ const server = http.createServer(async (req, res) => {
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify(result.rows));
         } catch (err) {
-            console.error('Ошибка при выполнении запроса к базе данных:', err.message);
+            console.error('Database query error:', err.message);
             res.statusCode = 500;
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify({ error: 'Внутренняя ошибка сервера' }));
@@ -210,7 +210,7 @@ const server = http.createServer(async (req, res) => {
                 res.end(JSON.stringify(createdBook));
             }
             catch (err) {
-                console.error('Ошибка при выполнении запроса к базе данных:', err.message);
+                console.error('Database query error:', err.message);
                 res.statusCode = 500;
                 res.setHeader('Content-Type', 'application/json');
                 res.end(JSON.stringify({ error: 'Внутренняя ошибка сервера' }));
@@ -329,7 +329,7 @@ const server = http.createServer(async (req, res) => {
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify(updatedBook));
         } catch (err) {
-            console.error('Ошибка при выполнении запроса к базе данных:', err.message);
+            console.error('Database query error:', err.message);
             res.statusCode = 500;
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify({ error: 'Внутренняя ошибка сервера' }));
@@ -359,7 +359,7 @@ const server = http.createServer(async (req, res) => {
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify({ message: 'Книга успешно удалена' }));
         } catch (err) {
-            console.error('Ошибка при выполнении запроса к базе данных:', err.message);
+            console.error('Database query error:', err.message);
             res.statusCode = 500;
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify({ error: 'Внутренняя ошибка сервера' }));
@@ -367,7 +367,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     /* Обрабатываем POST-запросы к /books/:id/notes для добавления заметки к книге по ID */
-    else if (parsedUrl.pathname.startsWith('/books/') && parsedUrl.pathname.replace(/\/$/, '').endsWith('/notes') && req.method === 'POST') {
+    else if (/^\/books\/\d+\/notes\/?$/.test(parsedUrl.pathname) && req.method === 'POST') {
         const id = parseInt(parsedUrl.pathname.split('/')[2]);
         if (isNaN(id)) {
             res.statusCode = 400;
@@ -414,7 +414,7 @@ const server = http.createServer(async (req, res) => {
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify(insertResult.rows[0]));
         } catch (err) {
-            console.error('Ошибка при выполнении запроса к базе данных:', err.message);
+            console.error('Database query error:', err.message);
             res.statusCode = 500;
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify({ error: 'Внутренняя ошибка сервера' }));
@@ -422,7 +422,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     /* Обрабатываем PATCH-запросы к /notes/:id для обновления заметки по ID */
-    else if (parsedUrl.pathname.startsWith('/notes/') && req.method === 'PATCH') {
+    else if (/^\/notes\/\d+\/?$/.test(parsedUrl.pathname) && req.method === 'PATCH') {
         const noteId = parseInt(parsedUrl.pathname.split('/')[2]);
         if (isNaN(noteId)) {
             res.statusCode = 400;
@@ -469,7 +469,7 @@ const server = http.createServer(async (req, res) => {
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify(updateResult.rows[0]));
         } catch (err) {
-            console.error('Ошибка при выполнении запроса к базе данных:', err.message);
+            console.error('Database query error:', err.message);
             res.statusCode = 500;
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify({ error: 'Внутренняя ошибка сервера' }));
@@ -477,7 +477,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     /* Обрабатываем DELETE-запросы к /notes/:id для удаления заметки по ID */
-    else if (parsedUrl.pathname.startsWith('/notes/') && req.method === 'DELETE') {
+    else if (/^\/notes\/\d+\/?$/.test(parsedUrl.pathname) && req.method === 'DELETE') {
         const noteId = parseInt(parsedUrl.pathname.split('/')[2]);
         if (isNaN(noteId)) {
             res.statusCode = 400;
@@ -498,7 +498,7 @@ const server = http.createServer(async (req, res) => {
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify({ message: 'Заметка успешно удалена' }));
         } catch (err) {
-            console.error('Ошибка при выполнении запроса к базе данных:', err.message);
+            console.error('Database query error:', err.message);
             res.statusCode = 500;
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify({ error: 'Внутренняя ошибка сервера' }));

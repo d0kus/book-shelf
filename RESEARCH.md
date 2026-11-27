@@ -569,17 +569,31 @@ DROP OWNED BY book_user;
 спокойно удаляем
 DROP USER book_user;
 ```
-
-**Выдача прав на базу и таблицы (GRANT):**
+**Изменение существующей роли (`ALTER ROLE`):**
+`ALTER` — **меняет уже существующее** (например, обновляет пароль и право входа, чтобы не падать с ошибкой, если роль уже есть):
 ```
-GRANT ALL PRIVILEGES ON DATABASE book_shelf TO book_user;
-выдает все права над датабазой пользователю book_user
-
-REVOKE ALL PRIVILEGES ON DATABASE book_shelf FROM book_user;
-отбирает все права
-
-GRANT ALL ON ALL TABLES IN SCHEMA public TO book_user;
+ALTER ROLE book_shelf_user WITH LOGIN PASSWORD 'secure_password';
 ```
+
+**Выдача прав на базу, схему, таблицы и счётчики (`GRANT` — принцип наименьших привилегий):**
+Вместо опасного `GRANT ALL` рабочему приложению выдают только минимально нужные права:
+```
+Разрешить вход в БД
+GRANT CONNECT ON DATABASE book_shelf TO book_shelf_user;
+
+Разрешить видеть схему public
+GRANT USAGE ON SCHEMA public TO book_shelf_user;
+
+Разрешить работу только со строками (без прав на DROP TABLE и ALTER TABLE)
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE books, notes TO book_shelf_user;
+
+Разрешить пользоваться счётчиками SERIAL (id) — иначе INSERT упадет с permission denied!
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO book_shelf_user;
+
+Отобрать права обратно:
+REVOKE ALL PRIVILEGES ON DATABASE book_shelf FROM book_shelf_user;
+```
+*(Важно: при `DROP TABLE` все выданные права `GRANT` стираются вместе с таблицей, поэтому после пересоздания таблиц права нужно выдавать заново).*
 
 ---
 
@@ -775,6 +789,22 @@ DROP SCHEMA my_schema CASCADE;
   Вывод:
   { "id": 1, "text": "Отличная книга" }
   ```
+  - **Системные каталоги (`pg_database`, `pg_roles`) — проверка существования перед созданием:**
+    В PostgreSQL есть служебные таблицы где хранится список всех баз и ролей.
+    **`pg_database`** - хранит базы данных
+
+    **`pg_roles`** - хранит роли
+
+  - **`ANY($1)` (фильтрация по массиву значений):**
+    Удобно в фильтрах с чекбоксами, когда приходит сразу несколько статусов `['read', 'reading']`:
+    ```
+    SELECT * FROM books WHERE status = ANY($1);
+    ``` 
+  - **`ALTER TABLE`:**
+    Изменение структуры уже созданной таблицы без её удаления (например, добавить новую колонку):
+    ```
+    ALTER TABLE books ADD COLUMN created_at TIMESTAMPTZ DEFAULT NOW();
+    ```
 
 
 ## Пакет pg(node-postgres)
@@ -870,6 +900,13 @@ console.log(res.rows[0])
     - В `pg.Pool` клиенты в режиме ожидания (idle) держат открытое соединение с базой данных. Если PostgreSQL перезапускается или рвётся сеть, клиент выбрасывает событие `error`. Если на самом пуле нет слушателя `pool.on('error')`, в Node.js любое неперехваченное событие `'error'` аварийно завершает весь процесс сервера. Обработчик `pool.on('error', (err) => { ... })` защищает сервер от падения при перезапуске службы БД.
 12. **Точный роутинг через регулярные выражения (RegExp) вместо `.startsWith()`:**
     - Использование `.startsWith('/books/')` для `DELETE` и `PATCH` опасно тем, что под него попадают и вложенные пути вроде `/books/:id/notes`. В итоге запрос на удаление заметок ошибочно удалял саму книгу. Проверка регуляркой `/^\/books\/\d+\/?$/` гарантирует, что запрос сработает строго на ID книги и ни на что другое.
+    - Шаблон между `/ ... /`, который проверяется методом `.test(строка)` (возвращает `true` или `false`).
+     - Главные символы в наших роутах:
+      - `^` — начало строки, `$` — конец строки.
+      - `\/` — экранированный слэш `/`.
+      - `\d+` — одна или больше цифр (например, `1`, `42`). Без слэша просто `d+` искало бы букву `"d"`!
+      - `\/?` — необязательный слэш на конце (`0` или `1` раз).
+
 
 
 ## Что не понял/вызвало сложности:
@@ -898,12 +935,17 @@ console.log(res.rows[0])
 - [PostgreSQL: Условные выражения и COALESCE](https://www.postgresql.org/docs/current/functions-conditional.html#FUNCTIONS-COALESCE)
 - [PostgreSQL: Поиск по шаблону (LIKE и ILIKE)](https://www.postgresql.org/docs/current/functions-matching.html#FUNCTIONS-LIKE)
 - [PostgreSQL: Индексы и B-Tree](https://www.postgresql.org/docs/current/indexes.html)
+- [PostgreSQL: pg_database](https://www.postgresql.org/docs/current/catalog-pg-database.html)
+- [PostgreSQL: pg_roles](https://www.postgresql.org/docs/current/view-pg-roles.html)
 - [node-postgres (библиотека pg)](https://node-postgres.com)
 - [package.json (Habr)](https://habr.com/ru/companies/ruvds/articles/423703/)
 - [package-lock.json (Habr)](https://habr.com/ru/companies/domclick/articles/513130/)
 - https://habr.com/ru/companies/otus/articles/828684/
 - https://dev.to/thisdotmedia/connecting-to-postgresql-with-node-js-k6k
 - [Node.js: Нативная загрузка переменных окружения (--env-file)](https://nodejs.org/api/cli.html#--env-fileconfig)
+- [MDN: RegExp](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions)
+
+
 
 ### Использование ИИ
 
@@ -945,3 +987,8 @@ console.log(res.rows[0])
 * **Запрос:** Почему сервер падает при перезапуске PostgreSQL, даже если запросов нет?
 * **Ответ ИИ:** В пуле соединений `pg.Pool` клиенты держат сокеты открытыми. При перезапуске базы сокет рвётся, и `pg` выбрасывает событие `'error'`. В Node.js любое неперехваченное событие `'error'` приводит к крашу процесса. Чтобы сервер не падал, нужно повесить обработчик `pool.on('error', (err) => console.error(...))`.
 * **Что взял:** Добавил `pool.on('error', ...)` в инициализацию пула в `server.js`.
+
+### 9.
+* **Запрос:** Почему `DELETE /books/:id/notes` удалял книгу?
+* **Ответ ИИ:** `.startsWith('/books/')` пропускал любые пути после `/books/` и все равно удялял книгу даже если адрес неверный.
+* **Что взял:** заменил .startsWith() на регулярку
