@@ -1,16 +1,26 @@
 /* Добавляем модуль http для создания сервера */
 const http = require('node:http');
 
+/* Добавляем модуль pg для работы с PostgreSQL */
+const { Pool } = require('pg');
+
+/* Создаем пул соединений с базой данных PostgreSQL */
+const pool = new Pool({
+    user: process.env.DB_USER || 'book_shelf_user',
+    host: process.env.DB_HOST || 'localhost',
+    database: process.env.DB_NAME || 'book_shelf',
+    password: process.env.DB_PASSWORD || 'book_shelf_password',
+    port: process.env.DB_PORT || 5432,
+});
+
+pool.on('error', (err) => {
+    console.error('Unexpected PostgreSQL pool error:', err.message);
+});
+
 /* Устанавливаем хост и порт для сервера */
 const hostname = '127.0.0.1';
 const port = 3000;
 
-/* Захардоженные данные о книгах */
-let books = [
-    { id: 1, title: 'The Great Gatsby', author: 'F. Scott Fitzgerald', status: 'read', rating: 5 },
-    { id: 2, title: 'To Kill a Mockingbird', author: 'Harper Lee', status: 'reading', rating: null },
-    { id: 3, title: '1984', author: 'George Orwell', status: 'want', rating: null }
-]
 const validStatuses = ["want", "reading", "read"];
 
 /* Функция для получения тела запроса в формате JSON */
@@ -64,32 +74,64 @@ const server = http.createServer(async (req, res) => {
 
     /* Обрабатываем GET-запросы к /books с фильтрацией по параметрам */
     if (parsedUrl.pathname === '/books' && req.method === 'GET') {
-        const queryParams = parsedUrl.searchParams;
-        let filteredBooks = books;
+        try {
+            const queryParams = parsedUrl.searchParams;
+            
+            const conditions = [];
+            const values = [];
 
-        if (queryParams.has('id')){
-            const id = parseInt(queryParams.get('id'));
-            filteredBooks = filteredBooks.filter(book => book.id === id);
+            if (queryParams.has('id')) {
+                const id = parseInt(queryParams.get('id'));
+                if (isNaN(id)) {
+                    res.statusCode = 400;
+                    res.setHeader('Content-Type', 'application/json');
+                    res.end(JSON.stringify({ error: 'Некорректный ID книги' }));
+                    return;
+                }
+                values.push(id);
+                conditions.push(`b.id = $${values.length}`);
+            }
+
+            if (queryParams.has('title')) {
+                values.push(`%${queryParams.get('title').trim()}%`);
+                conditions.push(`b.title ILIKE $${values.length}`);
+            }
+
+            if (queryParams.has('author')) {
+                values.push(`%${queryParams.get('author').trim()}%`);
+                conditions.push(`b.author ILIKE $${values.length}`);
+            }
+
+            if (queryParams.has('status')) {
+                const statuses = queryParams.getAll('status');
+                values.push(statuses);
+                conditions.push(`b.status = ANY($${values.length})`);
+            }
+
+            const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+            const query = `
+                SELECT b.id, b.title, b.author, b.status, b.rating, b.created_at,
+                     COALESCE(json_agg(json_build_object('id', n.id, 'text', n.text, 'created_at', n.created_at) ORDER BY n.created_at DESC)
+                    FILTER (WHERE n.id IS NOT NULL),
+                    '[]'
+                     ) AS notes
+                FROM books b LEFT JOIN notes n ON b.id = n.book_id
+                 ${whereClause}
+                GROUP BY b.id
+                ORDER BY b.id;
+                `;
+            const result = await pool.query(query, values);
+                    
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(result.rows));
+        } catch (err) {
+            console.error('Database query error:', err.message);
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Внутренняя ошибка сервера' }));
         }
-
-        if (queryParams.has('author')) {
-            const author = queryParams.get('author').trim().toLowerCase();
-            filteredBooks = filteredBooks.filter(book => String(book.author || '').toLowerCase().includes(author));
-        }
-
-        if (queryParams.has('title')) {
-            const title = queryParams.get('title').trim().toLowerCase();
-            filteredBooks = filteredBooks.filter(book => String(book.title || '').toLowerCase().includes(title));
-        }
-
-        if (queryParams.has('status')) {
-            const statuses = queryParams.getAll('status');
-            filteredBooks = filteredBooks.filter(book => statuses.includes(book.status));
-        }
-
-        res.statusCode = 200;
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify(filteredBooks));
     }
     
     /* Обрабатываем GET-запрос к корневому пути */
@@ -128,23 +170,51 @@ const server = http.createServer(async (req, res) => {
                 res.end(JSON.stringify({ error: 'Автор должен быть строкой' }));
                 return;
             }
-            newBook.id = Date.now();
             newBook.title = newBook.title.trim();
             if (newBook.author) {
                 newBook.author = newBook.author.trim();
             }
             newBook.author = newBook.author || "Неизвестный автор";
             
+            if (newBook.title.length > 255) {
+                res.statusCode = 400;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Название книги не должно превышать 255 символов' }));
+                return;
+            }
+            if (newBook.author.length > 255) {
+                res.statusCode = 400;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Имя автора не должно превышать 255 символов' }));
+                return;
+            }
+
             if (newBook.status !== 'read') {
                 newBook.rating = null;
             }
             else {
                 newBook.rating = newBook.rating ?? null;
             }
-            books.push(newBook);
-            res.statusCode = 201;
-            res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify(newBook));
+            const insertQuery = `
+                INSERT INTO books (title, author, status, rating)
+                VALUES ($1, $2, $3, $4)
+                RETURNING *;
+            `;
+
+            try {
+                const result = await pool.query(insertQuery, [newBook.title, newBook.author, newBook.status, newBook.rating]);
+                const createdBook = result.rows[0];
+                createdBook.notes = [];
+                res.statusCode = 201;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify(createdBook));
+            }
+            catch (err) {
+                console.error('Database query error:', err.message);
+                res.statusCode = 500;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Внутренняя ошибка сервера' }));
+            }
         }
         catch (err) {
             res.statusCode = 400;
@@ -154,7 +224,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     /* Обрабатываем PATCH-запросы к /books/:id для обновления книги по ID */
-    else if (parsedUrl.pathname.startsWith('/books/') && req.method === 'PATCH') {
+    else if (/^\/books\/\d+\/?$/.test(parsedUrl.pathname) && req.method === 'PATCH') {
         const id = parseInt(parsedUrl.pathname.split('/')[2]);
         if (isNaN(id)) {
             res.statusCode = 400;
@@ -162,63 +232,112 @@ const server = http.createServer(async (req, res) => {
             res.end(JSON.stringify({ error: 'Некорректный ID книги' }));
             return;
         }
-        const book = books.find(b => b.id === id);
-        if (!book) {
-            res.statusCode = 404;
+        let updates;
+        try {
+            updates = await getRequestBody(req);
+        } catch (err) {
+            res.statusCode = 400;
             res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify({ error: 'Книга не найдена' }));
+            res.end(JSON.stringify({ error: 'Некорректный JSON в теле запроса' }));
             return;
         }
+        if(!updates || typeof updates !== 'object'|| Array.isArray(updates)) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Тело запроса должно быть объектом' }));
+            return;
+        }
+
+        delete updates.id;
+
+        if (updates.title !== undefined) {
+            if (typeof updates.title !== 'string' || !updates.title.trim()) {
+                res.statusCode = 400;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Название книги должно быть непустой строкой' }));
+                return;
+            }
+            updates.title = updates.title.trim();
+        }
+        if (updates.status !== undefined && !validStatuses.includes(updates.status)) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Некорректный статус книги' }));
+            return;
+        }
+        if (updates.rating !== undefined && updates.rating !== null && (!Number.isInteger(updates.rating) || updates.rating < 1 || updates.rating > 5)) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Оценка должна быть числом от 1 до 5' }));
+            return;
+        }
+        if (updates.author !== undefined) {
+            if (typeof updates.author !== 'string') {
+                res.statusCode = 400;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Автор должен быть строкой' }));
+                return;
+            }
+            updates.author = updates.author.trim() || "Неизвестный автор";
+        }
+
+        if (updates.title && updates.title.length > 255) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Название книги не должно превышать 255 символов' }));
+            return;
+        }
+        if (updates.author && updates.author.length > 255) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Имя автора не должно превышать 255 символов' }));
+            return;
+        }
+
+
         try {
-            const updates = await getRequestBody(req);
-            delete updates.id;
-            if (updates.title !== undefined) {
-                if (typeof updates.title !== 'string' || !updates.title.trim()) {
-                    res.statusCode = 400;
-                    res.setHeader('Content-Type', 'application/json');
-                    res.end(JSON.stringify({ error: 'Название книги должно быть непустой строкой' }));
-                    return;
-                }
-                updates.title = updates.title.trim();
-            }
-            if (updates.status !== undefined && !validStatuses.includes(updates.status)) {
-                res.statusCode = 400;
+            const checkResult = await pool.query('SELECT * FROM books WHERE id = $1', [id]);
+            if (checkResult.rowCount === 0) {
+                res.statusCode = 404;
                 res.setHeader('Content-Type', 'application/json');
-                res.end(JSON.stringify({ error: 'Некорректный статус книги' }));
+                res.end(JSON.stringify({ error: 'Книга не найдена' }));
                 return;
             }
-            if (updates.rating !== undefined && updates.rating !== null && (!Number.isInteger(updates.rating) || updates.rating < 1 || updates.rating > 5)) {
-                res.statusCode = 400;
-                res.setHeader('Content-Type', 'application/json');
-                res.end(JSON.stringify({ error: 'Оценка должна быть числом от 1 до 5' }));
-                return;
+
+            const currentBook = checkResult.rows[0];
+
+            const finalTitle = updates.title ?? currentBook.title;
+            const finalAuthor = updates.author ?? currentBook.author;
+            const finalStatus = updates.status ?? currentBook.status;
+            let finalRating;
+            if (finalStatus !== 'read') {
+                finalRating = null;
+            } else {
+                finalRating = updates.rating !== undefined ? updates.rating : currentBook.rating;
             }
-            if (updates.author !== undefined) {
-                if (typeof updates.author !== 'string') {
-                    res.statusCode = 400;
-                    res.setHeader('Content-Type', 'application/json');
-                    res.end(JSON.stringify({ error: 'Автор должен быть строкой' }));
-                    return;
-                }
-                updates.author = updates.author.trim() || "Неизвестный автор";
-            }
-            Object.assign(book, updates);
-            if (book.status !== 'read') {
-                book.rating = null;
-            }
+
+            const updateQuery = `
+                UPDATE books
+                SET title = $1, author = $2, status = $3, rating = $4
+                WHERE id = $5
+                RETURNING *;
+            `;
+            const updateResult = await pool.query(updateQuery, [finalTitle, finalAuthor, finalStatus, finalRating, id]);
+            const updatedBook = updateResult.rows[0];
+
             res.statusCode = 200;
             res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify(book));
-        }
-        catch (err) {
-        res.statusCode = 400;
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ error: 'Некорректный JSON в теле запроса' }));
+            res.end(JSON.stringify(updatedBook));
+        } catch (err) {
+            console.error('Database query error:', err.message);
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Внутренняя ошибка сервера' }));
         }
     }
     
     /* Обрабатываем DELETE-запросы к /books/:id для удаления книги по ID */
-    else if (parsedUrl.pathname.startsWith('/books/') && req.method === 'DELETE') {
+    else if (/^\/books\/\d+\/?$/.test(parsedUrl.pathname) && req.method === 'DELETE') {
         const id = parseInt(parsedUrl.pathname.split('/')[2]);
         if (isNaN(id)) {
             res.statusCode = 400;
@@ -226,19 +345,168 @@ const server = http.createServer(async (req, res) => {
             res.end(JSON.stringify({ error: 'Некорректный ID книги' }));
             return;
         }
-        const book = books.find(b => b.id === id);
-        if (!book) {
-            res.statusCode = 404;
+        
+        try {
+            const deleteResult = await pool.query('DELETE FROM books WHERE id = $1 RETURNING *;', [id]);
+            if (deleteResult.rowCount === 0) {
+                res.statusCode = 404;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Книга не найдена' }));
+                return;
+            }
+
+            res.statusCode = 200;
             res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify({ error: 'Книга не найдена' }));
+            res.end(JSON.stringify({ message: 'Книга успешно удалена' }));
+        } catch (err) {
+            console.error('Database query error:', err.message);
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Внутренняя ошибка сервера' }));
+        }
+    }
+
+    /* Обрабатываем POST-запросы к /books/:id/notes для добавления заметки к книге по ID */
+    else if (/^\/books\/\d+\/notes\/?$/.test(parsedUrl.pathname) && req.method === 'POST') {
+        const id = parseInt(parsedUrl.pathname.split('/')[2]);
+        if (isNaN(id)) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Некорректный ID книги' }));
             return;
         }
-        books = books.filter(b => b.id !== id);
-        res.statusCode = 200;
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ message: 'Книга успешно удалена' }));
+
+        let newNote;
+        try {
+            newNote = await getRequestBody(req);
+        } catch (err) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Некорректный JSON в теле запроса' }));
+            return;
+        }
+
+        if(!newNote || typeof newNote !== 'object' || Array.isArray(newNote)) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Тело запроса должно быть объектом' }));
+            return;
+        }
+
+        if (typeof newNote.text !== 'string' || !newNote.text.trim()) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Текст заметки должен быть непустой строкой' }));
+            return;
+        }
+        newNote.text = newNote.text.trim();
+
+        try {
+            const checkResult = await pool.query('SELECT * FROM books WHERE id = $1', [id]);
+            if (checkResult.rowCount === 0) {
+                res.statusCode = 404;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Книга не найдена' }));
+                return;
+            }
+            const insertResult = await pool.query('INSERT INTO notes (book_id, text) VALUES ($1, $2) RETURNING *;', [id, newNote.text]);
+            res.statusCode = 201;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(insertResult.rows[0]));
+        } catch (err) {
+            console.error('Database query error:', err.message);
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Внутренняя ошибка сервера' }));
+        }
     }
-        
+
+    /* Обрабатываем PATCH-запросы к /notes/:id для обновления заметки по ID */
+    else if (/^\/notes\/\d+\/?$/.test(parsedUrl.pathname) && req.method === 'PATCH') {
+        const noteId = parseInt(parsedUrl.pathname.split('/')[2]);
+        if (isNaN(noteId)) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Некорректный ID заметки' }));
+            return;
+        }
+
+        let updates;
+        try {
+            updates = await getRequestBody(req);
+        } catch (err) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Некорректный JSON в теле запроса' }));
+            return;
+        }
+        if(!updates || typeof updates !== 'object'|| Array.isArray(updates)) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Тело запроса должно быть объектом' }));
+            return;
+        }
+
+        if (updates.text === undefined || typeof updates.text !== 'string' || !updates.text.trim()) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Текст заметки должен быть непустой строкой' }));
+            return;
+        }
+        updates.text = updates.text.trim();
+
+        try {
+            const updateResult = await pool.query('UPDATE notes SET text = $1 WHERE id = $2 RETURNING *;', [updates.text, noteId]);
+
+            if (updateResult.rowCount === 0) {
+                res.statusCode = 404;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Заметка не найдена' }));
+                return;
+            }
+
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(updateResult.rows[0]));
+        } catch (err) {
+            console.error('Database query error:', err.message);
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Внутренняя ошибка сервера' }));
+        }
+    }
+
+    /* Обрабатываем DELETE-запросы к /notes/:id для удаления заметки по ID */
+    else if (/^\/notes\/\d+\/?$/.test(parsedUrl.pathname) && req.method === 'DELETE') {
+        const noteId = parseInt(parsedUrl.pathname.split('/')[2]);
+        if (isNaN(noteId)) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Некорректный ID заметки' }));
+            return;
+        }
+
+        try {
+            const deleteResult = await pool.query('DELETE FROM notes WHERE id = $1 RETURNING *;', [noteId]);
+            if (deleteResult.rowCount === 0) {
+                res.statusCode = 404;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Заметка не найдена' }));
+                return;
+            }
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ message: 'Заметка успешно удалена' }));
+        } catch (err) {
+            console.error('Database query error:', err.message);
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Внутренняя ошибка сервера' }));
+        }
+    }
+
+
+
     /* Обрабатываем остальные запросы */
     else {
         res.statusCode = 404;

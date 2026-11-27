@@ -1,0 +1,30 @@
+{
+  "name": "book-shelf",
+  "version": "1.0.0",
+  "description": "Веб-приложение для учёта прочитанных книг с разделением на клиентскую часть (Vanilla JS) и серверную часть (REST API на чистом Node.js).",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node --env-file-if-exists=.env server.js",
+    "db:init": "node --env-file-if-exists=.env scripts/init-db.js"
+  },
+  "engines": {
+    "node": ">=22.9.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/d0kus/book-shelf.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/d0kus/book-shelf/issues"
+  },
+  "homepage": "https://github.com/d0kus/book-shelf#readme",
+  "dependencies": {
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {}
+}
